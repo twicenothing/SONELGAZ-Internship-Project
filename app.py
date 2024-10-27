@@ -219,7 +219,7 @@ def upload_file_ventes(wilaya_code):
        
         if wilaya in wilayas:
             
-            wilayas[f"{wilaya}-ventes"].append(achats,ventes,tp)
+            wilayas[f"{wilaya}-ventes"].extend([achats, ventes, tp])
             # For other types like `tp`, append where appropriate in the wilayas dictionary
             print("")
         else:
