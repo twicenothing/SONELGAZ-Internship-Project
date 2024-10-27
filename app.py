@@ -7,8 +7,28 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-
-
+wilayas = {
+    "blida":[],
+    "blida-ventes":[],
+    "chlef":[],
+    "chlef-ventes":[],
+    "bouira":[],
+    "bouira-ventes":[],
+    "tiziouzou":[],
+    "tiziouzou-ventes":[],
+    "djelfa":[],
+    "djelfa-ventes":[],
+    "medea":[],
+    "medea-ventes":[],
+    "boumerdes":[],
+    "boumerdes-ventes":[],
+    "tissemsilt":[],
+    "tissemsilt-ventes":[],
+    "tipaza":[],
+    "tipaza-ventes":[],
+    "aindefla":[],
+    "aindefla-ventes":[]
+}
 
 
 
@@ -163,11 +183,28 @@ def load_process_ventes(file='DD Blida - TDB ventes final hor tb.xlsx'):
     
     return ventes,achats,tp
 
+def get_wilaya(wilaya_code):
+    mapping = {
+        "09":"blida",
+        "02":"chlef",
+        "10":"bouira",
+        "15":"tiziouzou",
+        "17":"djelfa",
+        "26":"medea",
+        "35":"boumerdes",
+        "38":"tissemsilt",
+        "42":"tipaza",
+        "44":"aindefla"
+    }
+    return mapping.get(wilaya_code,"invalid")
 
 
 
-@app.route('/upload-ventes', methods=['POST'])
-def upload_file_ventes():
+
+
+
+@app.route('/upload-ventes/<wilaya_code>', methods=['POST'])
+def upload_file_ventes(wilaya_code):
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file part in the request'}), 400
@@ -176,17 +213,20 @@ def upload_file_ventes():
 
         # Process the file
         ventes, achats, tp = load_process_ventes(file)
+        wilaya = get_wilaya(wilaya_code)
 
-        # Write processed data to Excel file
-        output_file = 'processed_data_ventes.xlsx'
-        with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
-            ventes.to_excel(writer, sheet_name='Ventes', index=True)
-            achats.to_excel(writer, sheet_name='Achats', index=True)
-            tp.to_excel(writer, sheet_name='tp', index=True)
+       
+       
+        if wilaya in wilayas:
             
+            wilayas[f"{wilaya_code}-ventes"].append(achats,ventes,tp)
+            # For other types like `tp`, append where appropriate in the wilayas dictionary
+            print("")
+        else:
+            return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404
 
-        # Send the processed Excel file as a response
-        return send_file(output_file, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='processed_data_ventes.xlsx')
+        return jsonify({'message': f'Data successfully appended for {wilaya}'})
+
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
