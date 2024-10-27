@@ -212,17 +212,16 @@ def upload_file_ventes(wilaya_code):
         file = request.files['file']
 
         # Process the file
-        nombre_abonne, accroissement, apport,apport_nouv = load_process_ventes(file)
+        ventes, achats, tp = load_process_ventes(file)
         wilaya = get_wilaya(wilaya_code)
 
        
        
         if wilaya in wilayas:
             
-            wilayas[f"{wilaya}"].append(nombre_abonne)
-            wilayas[f"{wilaya}"].append(accroissement)
-            wilayas[f"{wilaya}"].append(apport)
-            wilayas[f"{wilaya}"].append(apport_nouv)
+            wilayas[f"{wilaya}-ventes"].append(achats)
+            wilayas[f"{wilaya}-ventes"].append(ventes)
+            wilayas[f"{wilaya}-ventes"].append(tp)
             # For other types like `tp`, append where 
             # appropriate in the wilayas dictionary
             
@@ -234,25 +233,6 @@ def upload_file_ventes(wilaya_code):
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
-
-# @app.route('/download-dataframes', methods=['GET'])
-# def download_dataframes():
-#     try:
-#         nombre_abonne, accroissement, apport,apport_nouv = load_process_xl()
-        
-#         output_file = 'nombre_abonnee.xlsx'
-#         with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
-#             nombre_abonne.to_excel(writer, sheet_name='Nombre Abonnés', index=True)
-#             accroissement.to_excel(writer, sheet_name='Accroissement', index=True)
-#             apport.to_excel(writer, sheet_name='Apport', index=True)
-#             apport_nouv.to_excel(writer, sheet_name='Apport_nouveau', index=True)
-
-#         return send_file(output_file, as_attachment=True)
-#     except Exception as e:
-#         return jsonify({'error': str(e)}), 500
-
 
 
 
@@ -272,11 +252,12 @@ def upload_file(wilaya_code):
        
         if wilaya in wilayas:
             
-            wilayas[f"{wilaya}-ventes"].append(achats)
-            wilayas[f"{wilaya}-ventes"].append(ventes)
-            wilayas[f"{wilaya}-ventes"].append(tp)
+            wilayas[f"{wilaya}"].append(achats)
+            wilayas[f"{wilaya}"].append(ventes)
+            wilayas[f"{wilaya}"].append(tp)
             # For other types like `tp`, append where 
             # appropriate in the wilayas dictionary
+            print(wilayas[wilaya])
             
         else:
             return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404
