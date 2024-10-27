@@ -164,23 +164,6 @@ def load_process_ventes(file='DD Blida - TDB ventes final hor tb.xlsx'):
     return ventes,achats,tp
 
 
-@app.route('/download-dataframesventes', methods=['GET'])
-def download_dataframesventes():
-    try:
-        ventes, achats, tp = load_process_ventes()
-        
-        output_file = 'ventes.xlsx'
-        with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
-            ventes.to_excel(writer, sheet_name='Ventes', index=True)
-            achats.to_excel(writer, sheet_name='Achats', index=True)
-            tp.to_excel(writer, sheet_name='Tp', index=True)
-            
-
-        return send_file(output_file, as_attachment=True)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
 
 
 @app.route('/upload-ventes', methods=['POST'])
@@ -192,7 +175,7 @@ def upload_file_ventes():
         file = request.files['file']
 
         # Process the file
-        ventes, achats, tp = load_process_xl(file)
+        ventes, achats, tp = load_process_ventes(file)
 
         # Write processed data to Excel file
         output_file = 'processed_data_ventes.xlsx'
@@ -210,43 +193,21 @@ def upload_file_ventes():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-@app.route('/download-dataframes', methods=['GET'])
-def download_dataframes():
-    try:
-        nombre_abonne, accroissement, apport,apport_nouv = load_process_xl()
+# @app.route('/download-dataframes', methods=['GET'])
+# def download_dataframes():
+#     try:
+#         nombre_abonne, accroissement, apport,apport_nouv = load_process_xl()
         
-        output_file = 'nombre_abonnee.xlsx'
-        with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
-            nombre_abonne.to_excel(writer, sheet_name='Nombre Abonnés', index=True)
-            accroissement.to_excel(writer, sheet_name='Accroissement', index=True)
-            apport.to_excel(writer, sheet_name='Apport', index=True)
-            apport_nouv.to_excel(writer, sheet_name='Apport_nouveau', index=True)
+#         output_file = 'nombre_abonnee.xlsx'
+#         with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
+#             nombre_abonne.to_excel(writer, sheet_name='Nombre Abonnés', index=True)
+#             accroissement.to_excel(writer, sheet_name='Accroissement', index=True)
+#             apport.to_excel(writer, sheet_name='Apport', index=True)
+#             apport_nouv.to_excel(writer, sheet_name='Apport_nouveau', index=True)
 
-        return send_file(output_file, as_attachment=True)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+#         return send_file(output_file, as_attachment=True)
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
 
 
 
