@@ -183,6 +183,30 @@ def download_dataframesventes():
 
 
 
+@app.route('/upload-ventes', methods=['POST'])
+def upload_file_ventes():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part in the request'}), 400
+
+        file = request.files['file']
+
+        # Process the file
+        ventes, achats, tp = load_process_xl(file)
+
+        # Write processed data to Excel file
+        output_file = 'processed_data_ventes.xlsx'
+        with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
+            ventes.to_excel(writer, sheet_name='Ventes', index=True)
+            achats.to_excel(writer, sheet_name='Achats', index=True)
+            tp.to_excel(writer, sheet_name='tp', index=True)
+            
+
+        # Send the processed Excel file as a response
+        return send_file(output_file, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='processed_data_ventes.xlsx')
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 
