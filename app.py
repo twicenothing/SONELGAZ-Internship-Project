@@ -212,16 +212,20 @@ def upload_file_ventes(wilaya_code):
         file = request.files['file']
 
         # Process the file
-        ventes, achats, tp = load_process_ventes(file)
+        nombre_abonne, accroissement, apport,apport_nouv = load_process_ventes(file)
         wilaya = get_wilaya(wilaya_code)
 
        
        
         if wilaya in wilayas:
             
-            wilayas[f"{wilaya}-ventes"].extend([achats, ventes, tp])
-            # For other types like `tp`, append where appropriate in the wilayas dictionary
-            print("")
+            wilayas[f"{wilaya}"].append(nombre_abonne)
+            wilayas[f"{wilaya}"].append(accroissement)
+            wilayas[f"{wilaya}"].append(apport)
+            wilayas[f"{wilaya}"].append(apport_nouv)
+            # For other types like `tp`, append where 
+            # appropriate in the wilayas dictionary
+            
         else:
             return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404
 
@@ -252,8 +256,8 @@ def upload_file_ventes(wilaya_code):
 
 
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
+@app.route('/upload/<wilaya_code>', methods=['POST'])
+def upload_file(wilaya_code):
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file part in the request'}), 400
@@ -261,18 +265,24 @@ def upload_file():
         file = request.files['file']
 
         # Process the file
-        nombre_abonne, accroissement, apport, apport_nouv = load_process_xl(file)
+        ventes, achats, tp = load_process_xl(file)
+        wilaya = get_wilaya(wilaya_code)
 
-        # Write processed data to Excel file
-        output_file = 'processed_data.xlsx'
-        with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
-            nombre_abonne.to_excel(writer, sheet_name='Nombre Abonnés', index=True)
-            accroissement.to_excel(writer, sheet_name='Accroissement', index=True)
-            apport.to_excel(writer, sheet_name='Apport', index=True)
-            apport_nouv.to_excel(writer, sheet_name='Apport_nouveau', index=True)
+       
+       
+        if wilaya in wilayas:
+            
+            wilayas[f"{wilaya}-ventes"].append(achats)
+            wilayas[f"{wilaya}-ventes"].append(ventes)
+            wilayas[f"{wilaya}-ventes"].append(tp)
+            # For other types like `tp`, append where 
+            # appropriate in the wilayas dictionary
+            
+        else:
+            return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404
 
-        # Send the processed Excel file as a response
-        return send_file(output_file, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='processed_data.xlsx')
+        return jsonify({'message': f'Data successfully appended for {wilaya}'})
+
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
