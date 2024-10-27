@@ -245,16 +245,17 @@ def upload_file(wilaya_code):
         file = request.files['file']
 
         # Process the file
-        ventes, achats, tp = load_process_xl(file)
+        nombre_abonne, accroissement, apport,apport_nouv = load_process_xl(file)
         wilaya = get_wilaya(wilaya_code)
 
        
        
         if wilaya in wilayas:
             
-            wilayas[f"{wilaya}"].append(achats)
-            wilayas[f"{wilaya}"].append(ventes)
-            wilayas[f"{wilaya}"].append(tp)
+            wilayas[f"{wilaya}"].append(nombre_abonne)
+            wilayas[f"{wilaya}"].append(accroissement)
+            wilayas[f"{wilaya}"].append(apport)
+            wilayas[f"{wilaya}"].append(apport_nouv)
             # For other types like `tp`, append where 
             # appropriate in the wilayas dictionary
             print(wilayas[wilaya])
