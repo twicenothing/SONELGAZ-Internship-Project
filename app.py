@@ -4,47 +4,11 @@ from flask import Flask,send_file, jsonify
 from flask import request, send_file, jsonify
 from flask_cors import CORS
 from funcs import *
-
+from region_funcs import *
+from data import *
 app = Flask(__name__)
 CORS(app)
 
-wilayas = {
-    "blida":[],
-    
-    "chlef":[],
-   
-    "bouira":[],
-    
-    "tiziouzou":[],
-   
-    "djelfa":[],
-   
-    "medea":[],
-    
-    "boumerdes":[],
-    
-    "tissemsilt":[],
-    
-    "tipaza":[],
-    
-    "aindefla":[],
-}
-
-
-
-wilayas_ventes={
-    "blida-ventes":[],
-    "chlef-ventes":[],
-    "bouira-ventes":[],
-    "tiziouzou-ventes":[],
-    "djelfa-ventes":[],
-    "medea-ventes":[],
-    "boumerdes-ventes":[],
-    "tissemsilt-ventes":[],
-    "tipaza-ventes":[],
-    "aindefla-ventes":[]
-}
-    
 
 
 
@@ -303,13 +267,16 @@ def upload_file(wilaya_code):
        
         if wilaya in wilayas:
             
-            wilayas[f"{wilaya}"].append(nombre_abonne)
-            wilayas[f"{wilaya}"].append(accroissement)
-            wilayas[f"{wilaya}"].append(apport)
-            wilayas[f"{wilaya}"].append(apport_nouv)
+            wilayas[wilaya].append({
+            "nombre_abonne": nombre_abonne,
+            "accroissement": accroissement,
+            "apport": apport,
+            "apport_nouv": apport_nouv
+        })
             # For other types like `tp`, append where 
             # appropriate in the wilayas dictionary
-            print(wilayas[wilaya])
+            # print(wilayas[wilaya][0]['nombre_abonne'])
+        
             
         else:
             return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404
@@ -320,7 +287,11 @@ def upload_file(wilaya_code):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
+@app.route('/test')
+def getolddataframe():
+    region_nombre_abonne_dataframe = region_nombre_abonne()
+    print(region_nombre_abonne_dataframe)
+    return jsonify({'message':'done!'})
 
     
 

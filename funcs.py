@@ -33,8 +33,6 @@ def find_repeated_index(df):
 
 
 
-
-
 # this serves the same thing as the last function but returns the mounth instead of the int
 def find_repeated_row(df):
     """
