@@ -59,3 +59,12 @@ def find_repeated_row(df):
             return df.index.values[i-1]
 
     return None  # In case no repeated rows are found
+
+
+
+def dictionary_is_full(dictionary):
+    flag = True
+    for key in dictionary.keys():
+        if dictionary[key] == [] :
+            flag = False
+    return flag

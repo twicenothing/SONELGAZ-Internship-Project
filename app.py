@@ -9,16 +9,7 @@ from data import *
 app = Flask(__name__)
 CORS(app)
 
-
-
-
-
-
-
-
-
 #Functions
-
 
 # made some changes to this function it should work all fine tho 
 def load_process_xl(file='Clientele DD TO 08-2024.xlsx'):
@@ -211,9 +202,6 @@ def get_wilaya(wilaya_code):
 
 
 
-
-
-
 ##Routes
 
 @app.route('/upload-ventes/<wilaya_code>', methods=['POST'])
@@ -289,8 +277,14 @@ def upload_file(wilaya_code):
 
 @app.route('/test')
 def getolddataframe():
-    region_nombre_abonne_dataframe = region_nombre_abonne()
-    print(region_nombre_abonne_dataframe)
+    flag = dictionary_is_full(wilayas)
+    if flag == True:
+        region_nombre_abonne_dataframe = region_nombre_abonne()
+        print(region_nombre_abonne_dataframe)
+    else:
+        print('Please fill all the wilayas data')
+    
+
     return jsonify({'message':'done!'})
 
     
