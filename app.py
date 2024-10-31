@@ -94,24 +94,25 @@ def load_process_xl(file='Clientele DD TO 08-2024.xlsx'):
         ['électricité'] * 5 + ['gaz'] * 5, nombre_abonne.columns
     ])
     nombre_abonne.fillna(0, inplace=True)
-    nombre_abonne = nombre_abonne.astype(int)
-    nombre_abonne.replace('-', 0, inplace=True)
     
+    # Convert to int safely
+    nombre_abonne.replace('-', 0, inplace=True)
+    nombre_abonne = nombre_abonne.apply(pd.to_numeric, errors='coerce').fillna(0).astype(int)
+
     index = find_repeated_index(nombre_abonne)
     
     if index is not None:
-        # If the found index is a repeated row, increment by 1 to keep it
-        # Otherwise, if it's a blank row, set it to NaN as well
         if nombre_abonne.iloc[index].isnull().all() or (nombre_abonne.iloc[index] == 0).all():
-            nombre_abonne.iloc[index:] = np.nan  # Set the blank row and all below to NaN
+            nombre_abonne.iloc[index:] = np.nan
         else:
-            nombre_abonne.iloc[index + 1:] = np.nan  # Skip the repeated first occurrence
+            nombre_abonne.iloc[index + 1:] = np.nan
     
     # SETTING UP ACCROISSEMENT
     accroissement = nombre_abonne.diff().fillna(0)[1:]
     accroissement.loc[len(accroissement)] = accroissement.sum()
     accroissement.index.values[-1] = 'Total'
     accroissement.replace('-', 0, inplace=True)
+    
     # SETTING UP APPORT
     start_row = table_titles[1] + 1
     end_row = table_titles[1] + 16
@@ -122,18 +123,16 @@ def load_process_xl(file='Clientele DD TO 08-2024.xlsx'):
     resiliation.index = resiliation['placeholder']
     del resiliation['placeholder']
     resiliation.index.name = None
-    resiliation = resiliation.iloc[:,:10]
+    resiliation = resiliation.iloc[:, :10]
     resiliation.columns = pd.MultiIndex.from_arrays([
         ['électricité'] * 5 + ['gaz'] * 5, resiliation.columns
     ])
     resiliation.fillna(0, inplace=True)
-    resiliation = resiliation.astype(int)
-    resiliation = resiliation.fillna(0)
-    resiliation.replace('-',0, inplace=True)
+    resiliation = resiliation.apply(pd.to_numeric, errors='coerce').fillna(0).astype(int)
 
     apport = accroissement + resiliation
     
-    #SEETTING UP APPORT NOUVEAU
+    # SETTING UP APPORT NOUVEAU
     start_row = table_titles[3] + 1
     end_row = table_titles[3] + 16
     reabonne = df.iloc[start_row + 1:end_row].reset_index(drop=True)
@@ -143,21 +142,17 @@ def load_process_xl(file='Clientele DD TO 08-2024.xlsx'):
     reabonne.index = reabonne['placeholder']
     del reabonne['placeholder']
     reabonne.index.name = None
-    reabonne = reabonne.iloc[:,:8]
+    reabonne = reabonne.iloc[:, :8]
     reabonne.columns = pd.MultiIndex.from_arrays([
         ['électricité'] * 4 + ['gaz'] * 4, reabonne.columns
     ])
     reabonne.fillna(0, inplace=True)
-    reabonne = reabonne.astype(int)
-    reabonne = reabonne.fillna(0)
+    reabonne = reabonne.apply(pd.to_numeric, errors='coerce').fillna(0).astype(int)
 
     apport_nouv = apport - reabonne
 
+    return nombre_abonne, accroissement, apport, apport_nouv
 
-
-
-
-    return nombre_abonne, accroissement, apport,apport_nouv
 
 
 
