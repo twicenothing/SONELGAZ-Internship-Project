@@ -3,35 +3,48 @@ import numpy as np
 from flask import Flask,send_file, jsonify
 from flask import request, send_file, jsonify
 from flask_cors import CORS
+from funcs import *
 
 app = Flask(__name__)
 CORS(app)
 
 wilayas = {
     "blida":[],
-    "blida-ventes":[],
+    
     "chlef":[],
-    "chlef-ventes":[],
+   
     "bouira":[],
-    "bouira-ventes":[],
+    
     "tiziouzou":[],
-    "tiziouzou-ventes":[],
+   
     "djelfa":[],
-    "djelfa-ventes":[],
+   
     "medea":[],
-    "medea-ventes":[],
+    
     "boumerdes":[],
-    "boumerdes-ventes":[],
+    
     "tissemsilt":[],
-    "tissemsilt-ventes":[],
+    
     "tipaza":[],
-    "tipaza-ventes":[],
+    
     "aindefla":[],
-    "aindefla-ventes":[]
 }
 
 
 
+wilayas_ventes={
+    "blida-ventes":[],
+    "chlef-ventes":[],
+    "bouira-ventes":[],
+    "tiziouzou-ventes":[],
+    "djelfa-ventes":[],
+    "medea-ventes":[],
+    "boumerdes-ventes":[],
+    "tissemsilt-ventes":[],
+    "tipaza-ventes":[],
+    "aindefla-ventes":[]
+}
+    
 
 
 
@@ -39,21 +52,25 @@ wilayas = {
 
 
 
-def load_process_xl(file='clientèle.xlsx'):
+
+#Functions
+
+
+# made some changes to this function it should work all fine tho 
+def load_process_xl(file='Clientele DD TO 08-2024.xlsx'):
     xl = pd.ExcelFile(file)
     df = xl.parse(0)
     df = df.dropna(how='all')
 
     cpt = 0
-    for index,row in df.iterrows():
-        cpt = cpt+1
+    for index, row in df.iterrows():
+        cpt += 1
     
-    df.index = np.arange(0,cpt)
+    df.index = np.arange(0, cpt)
 
     def detect_tables(df, keywords):
         titles = []
         for index, row in df.iterrows():
-            # Check if any cell in the row contains one of the keywords
             if row.astype(str).str.contains('|'.join(keywords), case=False).any():
                 titles.append(index)
         return titles
@@ -67,22 +84,34 @@ def load_process_xl(file='clientèle.xlsx'):
     nombre_abonne = df.iloc[start_row + 1:end_row].reset_index(drop=True)
     nombre_abonne.columns = nombre_abonne.iloc[0]
     nombre_abonne = nombre_abonne[1:]
-    nombre_abonne = nombre_abonne.iloc[:,:11]
+    nombre_abonne = nombre_abonne.iloc[:, :11]
     nombre_abonne.columns.values[0] = 'placeholder'
     nombre_abonne.index = nombre_abonne['placeholder']
     del nombre_abonne['placeholder']
     nombre_abonne.index.name = None
     nombre_abonne.index.values[0] = 'déc-23'
     nombre_abonne.columns = pd.MultiIndex.from_arrays([
-        ['élecricité'] * 5 + ['gaz'] * 5, nombre_abonne.columns
+        ['électricité'] * 5 + ['gaz'] * 5, nombre_abonne.columns
     ])
+    nombre_abonne.fillna(0, inplace=True)
     nombre_abonne = nombre_abonne.astype(int)
+    nombre_abonne.replace('-', 0, inplace=True)
+    
+    index = find_repeated_index(nombre_abonne)
+    
+    if index is not None:
+        # If the found index is a repeated row, increment by 1 to keep it
+        # Otherwise, if it's a blank row, set it to NaN as well
+        if nombre_abonne.iloc[index].isnull().all() or (nombre_abonne.iloc[index] == 0).all():
+            nombre_abonne.iloc[index:] = np.nan  # Set the blank row and all below to NaN
+        else:
+            nombre_abonne.iloc[index + 1:] = np.nan  # Skip the repeated first occurrence
     
     # SETTING UP ACCROISSEMENT
     accroissement = nombre_abonne.diff().fillna(0)[1:]
     accroissement.loc[len(accroissement)] = accroissement.sum()
     accroissement.index.values[-1] = 'Total'
-
+    accroissement.replace('-', 0, inplace=True)
     # SETTING UP APPORT
     start_row = table_titles[1] + 1
     end_row = table_titles[1] + 16
@@ -95,10 +124,12 @@ def load_process_xl(file='clientèle.xlsx'):
     resiliation.index.name = None
     resiliation = resiliation.iloc[:,:10]
     resiliation.columns = pd.MultiIndex.from_arrays([
-        ['élecricité'] * 5 + ['gaz'] * 5, resiliation.columns
+        ['électricité'] * 5 + ['gaz'] * 5, resiliation.columns
     ])
+    resiliation.fillna(0, inplace=True)
     resiliation = resiliation.astype(int)
     resiliation = resiliation.fillna(0)
+    resiliation.replace('-',0, inplace=True)
 
     apport = accroissement + resiliation
     
@@ -114,8 +145,9 @@ def load_process_xl(file='clientèle.xlsx'):
     reabonne.index.name = None
     reabonne = reabonne.iloc[:,:8]
     reabonne.columns = pd.MultiIndex.from_arrays([
-        ['élecricité'] * 4 + ['gaz'] * 4, reabonne.columns
+        ['électricité'] * 4 + ['gaz'] * 4, reabonne.columns
     ])
+    reabonne.fillna(0, inplace=True)
     reabonne = reabonne.astype(int)
     reabonne = reabonne.fillna(0)
 
@@ -126,6 +158,7 @@ def load_process_xl(file='clientèle.xlsx'):
 
 
     return nombre_abonne, accroissement, apport,apport_nouv
+
 
 
 def load_process_ventes(file='DD Blida - TDB ventes final hor tb.xlsx'):
@@ -161,25 +194,43 @@ def load_process_ventes(file='DD Blida - TDB ventes final hor tb.xlsx'):
     ventes.index.name = None
     del ventes['placeholder']
     ventes.columns = pd.MultiIndex.from_arrays([
-    ['élecricité'] * 5 + ['gaz'] * 5 +['gaz Exprimé en M3'] * 5,  # Higher level (First_5, Last_5)
+    ['électricité'] * 5 + ['gaz'] * 5 +['gaz Exprimé en M3'] * 5,  # Higher level (First_5, Last_5)
     ventes.columns  # Lower level (A, B, C, D, etc.)
     ])
     start_row = titles[1]+1
     end_row= titles[1]+15
-    achats = df.loc[start_row+1:end_row].reset_index(drop=True)
-    achats = achats.dropna(axis='columns',how='all')
-    achats.columns = achats.iloc[0]
-    achats = achats[1:]
-    achats.columns.values[0]='placeholder'
-    achats.index = achats['placeholder']
-    del achats['placeholder']
-    achats.index.name = None
-    achats.columns = pd.MultiIndex.from_arrays([
-    ['élecricité'] * 4 + ['gaz'] * 4 +['gaz Exprimé en M3'] * 4,  # Higher level (First_5, Last_5)
-    achats.columns  # Lower level (A, B, C, D, etc.)
+    achatsdf = df.loc[start_row+1:end_row].reset_index(drop=True)
+    achatsdf = achatsdf.dropna(axis='columns',how='all')
+    achatsdf.columns = achatsdf.iloc[0]
+    achatsdf = achatsdf[1:]
+    achatsdf.columns.values[0]='placeholder'
+    achatsdf.index = achatsdf['placeholder']
+    del achatsdf['placeholder']
+    achatsdf.index.name = None
+    achatsdf.columns = pd.MultiIndex.from_arrays([
+    ['électricité'] * 4 + ['gaz'] * 4 +['gaz Exprimé en M3'] * 4,  # Higher level (First_5, Last_5)
+    achatsdf.columns  # Lower level (A, B, C, D, etc.)
     ])
-    tp = (achats - ventes) / achats.where(achats != 0)
-    tp = tp.fillna(0)
+    one = achatsdf.loc[:, pd.IndexSlice['électricité',['Ventes','Achats']]]
+    ventes = one.loc[:, pd.IndexSlice['électricité', 'Ventes']].squeeze()
+    achats = one.loc[:, pd.IndexSlice['électricité', 'Achats']].squeeze()
+
+
+    tp1 = (achats - ventes).div(achats.where(achats != 0))
+    one = achatsdf.loc[:, pd.IndexSlice['gaz',['Ventes','Achats']]]
+    ventes = one.loc[:, pd.IndexSlice['gaz', 'Ventes']].squeeze()
+    achats = one.loc[:, pd.IndexSlice['gaz', 'Achats']].squeeze()
+
+
+    tp2 = (achats - ventes).div(achats.where(achats != 0))
+    one = achatsdf.loc[:, pd.IndexSlice['gaz Exprimé en M3',['Ventes','Achats']]]
+    ventes = one.loc[:, pd.IndexSlice['gaz Exprimé en M3', 'Ventes']].squeeze()
+    achats = one.loc[:, pd.IndexSlice['gaz Exprimé en M3', 'Achats']].squeeze()
+
+
+    tp3 = (achats - ventes).div(achats.where(achats != 0))
+    tp = pd.concat([tp1, tp2, tp3], axis=1)
+    tp.columns = ['électricité','gaz','gaz Exprimé en M3']
     
     return ventes,achats,tp
 
@@ -203,6 +254,9 @@ def get_wilaya(wilaya_code):
 
 
 
+
+##Routes
+
 @app.route('/upload-ventes/<wilaya_code>', methods=['POST'])
 def upload_file_ventes(wilaya_code):
     try:
@@ -214,19 +268,21 @@ def upload_file_ventes(wilaya_code):
         # Process the file
         ventes, achats, tp = load_process_ventes(file)
         wilaya = get_wilaya(wilaya_code)
+       
 
        
        
         if wilaya in wilayas:
             
-            wilayas[f"{wilaya}-ventes"].append(achats)
-            wilayas[f"{wilaya}-ventes"].append(ventes)
-            wilayas[f"{wilaya}-ventes"].append(tp)
+            wilayas_ventes[f"{wilaya}-ventes"].append(achats)
+            wilayas_ventes[f"{wilaya}-ventes"].append(ventes)
+            wilayas_ventes[f"{wilaya}-ventes"].append(tp)
             # For other types like `tp`, append where 
             # appropriate in the wilayas dictionary
-            
+            wilayaname = wilaya + '-ventes'
+            print(wilayas_ventes[wilayaname])
         else:
-            return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404
+            return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404, print(f'{wilaya} not found')
 
         return jsonify({'message': f'Data successfully appended for {wilaya}'})
 
