@@ -1,13 +1,111 @@
 import pandas as pd
 import numpy as np
-from app import *
-from data import *
 from funcs import *
-## function to load data from tableau de bord of 2023
+from data import *
 
 
-def load_old_data(file='T.B.xlsx'):
-    df = pd.read_excel(file,sheet_name='élec')
+
+# made some changes to this function it should work all fine tho 
+def load_process_xl(file='Clientele DD TO 08-2024.xlsx'):
+    xl = pd.ExcelFile(file)
+    df = xl.parse(0)
+    df = df.dropna(how='all')
+
+    cpt = 0
+    for index, row in df.iterrows():
+        cpt += 1
+    
+    df.index = np.arange(0, cpt)
+
+    def detect_tables(df, keywords):
+        titles = []
+        for index, row in df.iterrows():
+            if row.astype(str).str.contains('|'.join(keywords), case=False).any():
+                titles.append(index)
+        return titles
+    
+    keywords = ['Nombre d\'abonnés', 'résiliations', 'réabonnés']
+    table_titles = detect_tables(df, keywords)
+    
+    # SETTING UP NOMBRE D'ABONNEES DATA FRAME
+    start_row = table_titles[0] + 1
+    end_row = table_titles[0] + 16
+    nombre_abonne = df.iloc[start_row + 1:end_row].reset_index(drop=True)
+    nombre_abonne.columns = nombre_abonne.iloc[0]
+    nombre_abonne = nombre_abonne[1:]
+    nombre_abonne = nombre_abonne.iloc[:, :11]
+    nombre_abonne.columns.values[0] = 'placeholder'
+    nombre_abonne.index = nombre_abonne['placeholder']
+    del nombre_abonne['placeholder']
+    nombre_abonne.index.name = None
+    nombre_abonne.index.values[0] = 'déc-23'
+    nombre_abonne.columns = pd.MultiIndex.from_arrays([
+        ['électricité'] * 5 + ['gaz'] * 5, nombre_abonne.columns
+    ])
+    nombre_abonne.fillna(0, inplace=True)
+    
+    # Convert to int safely
+    nombre_abonne.replace('-', 0, inplace=True)
+    nombre_abonne = nombre_abonne.apply(pd.to_numeric, errors='coerce').fillna(0).astype(int)
+
+    index = find_repeated_index(nombre_abonne)
+    
+    if index is not None:
+        if nombre_abonne.iloc[index].isnull().all() or (nombre_abonne.iloc[index] == 0).all():
+            nombre_abonne.iloc[index:] = np.nan
+        else:
+            nombre_abonne.iloc[index + 1:] = np.nan
+    
+    # SETTING UP ACCROISSEMENT
+    accroissement = nombre_abonne.diff().fillna(0)[1:]
+    accroissement.loc[len(accroissement)] = accroissement.sum()
+    accroissement.index.values[-1] = 'Total'
+    accroissement.replace('-', 0, inplace=True)
+    
+    # SETTING UP APPORT
+    start_row = table_titles[1] + 1
+    end_row = table_titles[1] + 16
+    resiliation = df.iloc[start_row + 1:end_row].reset_index(drop=True)
+    resiliation.columns = resiliation.iloc[0]
+    resiliation = resiliation[1:]
+    resiliation.columns.values[0] = 'placeholder'
+    resiliation.index = resiliation['placeholder']
+    del resiliation['placeholder']
+    resiliation.index.name = None
+    resiliation = resiliation.iloc[:, :10]
+    resiliation.columns = pd.MultiIndex.from_arrays([
+        ['électricité'] * 5 + ['gaz'] * 5, resiliation.columns
+    ])
+    resiliation.fillna(0, inplace=True)
+    resiliation = resiliation.apply(pd.to_numeric, errors='coerce').fillna(0).astype(int)
+
+    apport = accroissement + resiliation
+    
+    # SETTING UP APPORT NOUVEAU
+    start_row = table_titles[3] + 1
+    end_row = table_titles[3] + 16
+    reabonne = df.iloc[start_row + 1:end_row].reset_index(drop=True)
+    reabonne.columns = reabonne.iloc[0]
+    reabonne = reabonne[1:]
+    reabonne.columns.values[0] = 'placeholder'
+    reabonne.index = reabonne['placeholder']
+    del reabonne['placeholder']
+    reabonne.index.name = None
+    reabonne = reabonne.iloc[:, :8]
+    reabonne.columns = pd.MultiIndex.from_arrays([
+        ['électricité'] * 4 + ['gaz'] * 4, reabonne.columns
+    ])
+    reabonne.fillna(0, inplace=True)
+    reabonne = reabonne.apply(pd.to_numeric, errors='coerce').fillna(0).astype(int)
+
+    apport_nouv = apport - reabonne
+
+    return nombre_abonne, accroissement, apport, apport_nouv
+
+
+
+def load_old_data_gaz(file='T.B.xlsx'):
+    df = pd.read_excel(file,sheet_name='gaz')
     df = df.dropna(how='all')
     first_row = df.columns.to_list()
     df.loc[-1] = first_row  # Temporarily add the row with index -1
@@ -49,6 +147,9 @@ def load_old_data(file='T.B.xlsx'):
     nombre_abbo2013.columns 
     ])
     nombre_abbo2013.columns.name = None
+    
+
+
     #Extraction de la table accroissement
     keywords=['Nombre d\'abonnés','Accroissement']
     table_titles = detect_tables(df, keywords)
@@ -79,18 +180,18 @@ def load_old_data(file='T.B.xlsx'):
 
 
 
-    return nombre_abbo2013,accroissement2013
+    return nombre_abbo2013,accroissement2013 
 
 
 
-# this returns a dataframe for the latest mounth data for 2023 
-def dataset_region_client_23():
+
+def dataset_region_client_23_gaz():
     ##This function has the goal of extracting the necessary data from the nombre abonné 2023 data frame and returning them as a dataframe to be then concatinated to the 2024 data
-    nombre_abbo2013, accroissement2013 = load_old_data()
+    nombre_abbo2013, accroissement2013 = load_old_data_gaz()
+    test =[]
     mounth = last_month_with_data(nombre_abbo2013)
-    test =[]
     for i in range(len(nombre_abbo2013)-1):
-        test.append(nombre_abbo2013.loc[nombre_abbo2013.index.values[i],pd.IndexSlice[mounth, ['BT', 'MT']]].unstack())
+        test.append(nombre_abbo2013.loc[nombre_abbo2013.index.values[i],pd.IndexSlice[mounth, ['BP', 'MP']]].unstack())
     i=0
     dataframe13 = pd.DataFrame()
     dataframe13 = pd.concat(test)
@@ -98,44 +199,14 @@ def dataset_region_client_23():
     dataframe13.index = wilayas
     return dataframe13
 
-
-def dataset_region_client_23_accroissement():
-    ##This function has the goal of extracting the necessary data from the nombre abonné 2023 data frame and returning them as a dataframe to be then concatinated to the 2024 data
-    nombre_abbo2013, accroissement2013 = load_old_data()
-    mounth = last_month_with_data(accroissement2013)
-    test =[]
-    for i in range(len(accroissement2013)-1):
-        test.append(accroissement2013.loc[accroissement2013.index.values[i],pd.IndexSlice['Août', ['BT', 'MT']]].unstack())
-    i=0
-    dataframe13 = pd.DataFrame()
-    dataframe13 = pd.concat(test)
-    wilayas = ['blida','bouira','medea','tiziouzou','djelfa','tipaza','boumerdes','aindefla','chlef','tissemsilt']
-    dataframe13.index = wilayas
-    return dataframe13
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#this returns the data i need for 2024 to then concatinate it with 23
-def dataset_region_client_24(wilaya=wilayas):
+def dataset_region_client_24_gaz(wilaya=wilayas):
 
     
+    
     cringe=[]
-    for key in wilaya:
+    for key in wilayas:
         # Access the 'nombre_abonne' DataFrame for the current key
-        nombre_abonne = wilaya[key][0]['nombre_abonne']  # Make sure this points to the right DataFrame
+        nombre_abonne = wilayas[key][0]['nombre_abonne']  # Make sure this points to the right DataFrame
 
         # Find the index of the repeated row
         index_of_repetition = find_repeated_row(nombre_abonne)
@@ -143,7 +214,7 @@ def dataset_region_client_24(wilaya=wilayas):
         # Check if the index_of_repetition is valid
         if index_of_repetition is not None and index_of_repetition in nombre_abonne.index:
             # Access the desired data
-            result = nombre_abonne.loc[index_of_repetition, pd.IndexSlice['électricité', ['BT', 'MT']]]
+            result = nombre_abonne.loc[index_of_repetition, pd.IndexSlice['gaz', ['BP', 'MP']]]
             flipped_result = result.unstack(level=0)  # Flip the first level of the MultiIndex
 
             # Optionally, reset the index for a flat DataFrame
@@ -161,24 +232,27 @@ def dataset_region_client_24(wilaya=wilayas):
     return dataframe24
 
 
-def region_nombre_abonne():
+
+
+
+def region_nombre_abonne_gaz():
     
-    dataframe13 = dataset_region_client_23()
-    dataframe24 = dataset_region_client_24()
+    dataframe13 = dataset_region_client_23_gaz()
+    dataframe24 = dataset_region_client_24_gaz()
     region_nombre_abonne_dataframe = pd.concat([dataframe13, dataframe24], axis='columns')
     region_nombre_abonne_dataframe.columns = pd.MultiIndex.from_arrays([
         ['23'] * 2 + ['24'] * 2, region_nombre_abonne_dataframe.columns
     ])
      # Calculate evolution (%) for BT and MT
       # Calculate and round evolution (%) for BT and MT
-    region_nombre_abonne_dataframe[('evolution (%)', 'BT')] = round(
-        ((region_nombre_abonne_dataframe[('24', 'BT')] - region_nombre_abonne_dataframe[('23', 'BT')]) 
-         / region_nombre_abonne_dataframe[('23', 'BT')]) * 100, 1
+    region_nombre_abonne_dataframe[('evolution (%)', 'BP')] = round(
+        ((region_nombre_abonne_dataframe[('24', 'BP')] - region_nombre_abonne_dataframe[('23', 'BP')]) 
+         / region_nombre_abonne_dataframe[('23', 'BP')]) * 100, 1
     )
 
-    region_nombre_abonne_dataframe[('evolution (%)', 'MT')] = round(
-        ((region_nombre_abonne_dataframe[('24', 'MT')] - region_nombre_abonne_dataframe[('23', 'MT')]) 
-         / region_nombre_abonne_dataframe[('23', 'MT')]) * 100, 1
+    region_nombre_abonne_dataframe[('evolution (%)', 'MP')] = round(
+        ((region_nombre_abonne_dataframe[('24', 'MP')] - region_nombre_abonne_dataframe[('23', 'MP')]) 
+         / region_nombre_abonne_dataframe[('23', 'MP')]) * 100, 1
     )
     region_nombre_abonne_dataframe=  region_nombre_abonne_dataframe.astype(float)
     total_row = region_nombre_abonne_dataframe.sum(numeric_only=True)
@@ -187,7 +261,3 @@ def region_nombre_abonne():
     # Append the total row to the DataFrame
     region_nombre_abonne_dataframe = pd.concat([region_nombre_abonne_dataframe, total_row.to_frame().T])
     return region_nombre_abonne_dataframe
-
-
-
-
