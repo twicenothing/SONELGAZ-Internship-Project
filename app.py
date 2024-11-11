@@ -6,6 +6,10 @@ from flask_cors import CORS
 from funcs import *
 from region_funcs import *
 from data import *
+from region_funcs_gaz import *
+from region_funcs_accroissement import *
+from region_funcs_gaz_accroissement import *
+from region_funcs_apport import *
 app = Flask(__name__)
 CORS(app)
 
@@ -275,7 +279,7 @@ def upload_file(wilaya_code):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/test')
+@app.route('/region_clientel')
 def getolddataframe():
     flag = dictionary_is_full(wilayas)
     if flag == True:
@@ -287,7 +291,62 @@ def getolddataframe():
 
     return jsonify({'message':'done!'})
 
+
+@app.route('/reegion_clientel_gaz')
+def region_clientel_gaz():
+    flag = dictionary_is_full(wilayas)
+    if flag == True:
+        region_nombre_abonne_dataframe = region_nombre_abonne_gaz()
+        print(region_nombre_abonne_dataframe)
+    else:
+        print('Please fill all the wilayas data')
     
+
+    return jsonify({'message':'done!'})   
+
+
+@app.route('/region_accroissement')
+def region_accroissement_dt():
+    flag = dictionary_is_full(wilayas)
+    if flag == True:
+        region_nombre_abonne_dataframe = region_accroissement()
+        print(region_nombre_abonne_dataframe)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'})   
+
+
+@app.route('/region_accroissement_gaz')
+def region_accroissement_dt_gaz():
+    flag = dictionary_is_full(wilayas)
+    if flag == True:
+        region_nombre_abonne_dataframe_gaz = region_accroissement_gaz()
+        print(region_nombre_abonne_dataframe_gaz)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'})   
+
+
+
+@app.route('/region_apport')
+def region_apport_dt():
+    flag = dictionary_is_full(wilayas)
+    if flag == True:
+        region_nombre_abonne_dataframe_gaz = region_apport()
+        print(region_nombre_abonne_dataframe_gaz)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'})   
+
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
