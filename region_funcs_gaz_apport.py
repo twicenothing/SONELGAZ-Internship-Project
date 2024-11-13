@@ -1,11 +1,8 @@
 import pandas as pd
 import numpy as np
-from funcs import *
 from data import *
+from funcs import *
 
-
-
-# made some changes to this function it should work all fine tho 
 def load_process_xl(file='Clientele DD TO 08-2024.xlsx'):
     xl = pd.ExcelFile(file)
     df = xl.parse(0)
@@ -102,8 +99,6 @@ def load_process_xl(file='Clientele DD TO 08-2024.xlsx'):
 
     return nombre_abonne, accroissement, apport, apport_nouv
 
-
-
 def load_old_data_gaz(file='T.B.xlsx'):
     df = pd.read_excel(file,sheet_name='gaz')
     df = df.dropna(how='all')
@@ -153,8 +148,8 @@ def load_old_data_gaz(file='T.B.xlsx'):
     #Extraction de la table accroissement
     keywords=['Nombre d\'abonnés','Accroissement']
     table_titles = detect_tables(df, keywords)
-    start = table_titles[1]+1
-    end = table_titles[1]+14
+    start = table_titles[1]
+    end = table_titles[1]+13
     accroissement2013 = df.iloc[start:end]
     accroissement2013 = accroissement2013.dropna(axis='columns',how='all')
     accroissement2013 = accroissement2013.iloc[:,:53]
@@ -174,7 +169,7 @@ def load_old_data_gaz(file='T.B.xlsx'):
     accroissement2013.columns 
     ])
 
-    #Extraction de la table apport
+      #Extraction de la table apport
     keywords=['Nombre d\'abonnés','Accroissement','Apport']
     table_titles = detect_tables(df, keywords)
     start = table_titles[2]-1
@@ -201,35 +196,69 @@ def load_old_data_gaz(file='T.B.xlsx'):
 
 
 
+    return nombre_abbo2013,accroissement2013,apport2023
 
+def get_cumul_apport_gaz(wil=wilayas):
+    nombre_abb,accroissement2013,apport13 = load_old_data_gaz()
+    apport13 = apport13.loc[:, pd.IndexSlice['CUMUL', ['BP', 'MP']]]
+    apport13.columns = apport13.columns.droplevel(0)
+  
+    df1 = pd.DataFrame()
+    for key in wil:
+        accroissement2024 = wil[key][0]["apport"]
+        line = accroissement2024.loc['Total',pd.IndexSlice['gaz', ['BP', 'MP']]]
+        df = pd.DataFrame(line)
 
-    return nombre_abbo2013,accroissement2013, apport2023 
+        # Drop the top level ('électricité') from the index
+        df.index = df.index.droplevel(0)
+        df.index = ['BP','MP']
+        df.columns = [key]
+        df = df.T
+        # line = line.T
+        # line.index.values[0]= key
+        df1 = pd.concat([df1, df], ignore_index=True)
+    sum_row = df1.sum()
+    df1.loc['SDC'] = sum_row
+    list = apport13.index.values
+    df1.index = [list]
+  
+    df1['Total']=df1.sum(axis=1)
+    df1.columns = pd.MultiIndex.from_arrays([
+        ['cumul-24'] *3, df1.columns
+    ])
+    apport13['Total']=apport13.sum(axis=1)
+    apport13.columns = pd.MultiIndex.from_arrays([
+        ['cumul-23'] *3, apport13.columns
+    ])
+    df1.index = df1.index.map(lambda x: x if isinstance(x, str) else x[0])
+    apport13.index = apport13.index.map(lambda x: x if isinstance(x, str) else x[0])
+    combined = pd.concat([apport13, df1], axis=1)
+   
+    return combined
 
-
-
-
-def dataset_region_client_23_gaz():
+def dataset_region_client_23_apport_gaz():
     ##This function has the goal of extracting the necessary data from the nombre abonné 2023 data frame and returning them as a dataframe to be then concatinated to the 2024 data
-    nombre_abbo2013, accroissement2013 = load_old_data_gaz()
-    test =[]
-    mounth = last_month_with_data(nombre_abbo2013)
-    for i in range(len(nombre_abbo2013)-1):
-        test.append(nombre_abbo2013.loc[nombre_abbo2013.index.values[i],pd.IndexSlice[mounth, ['BP', 'MP']]].unstack())
-    i=0
+    nombre_abbo2013, accroissement2013, apport = load_old_data_gaz()
+    mounth = last_month_with_data(apport)
+    test =  apport.loc[:,pd.IndexSlice[[mounth], ['BP', 'MP']]]
+    
+       
+    
     dataframe13 = pd.DataFrame()
-    dataframe13 = pd.concat(test)
-    wilayas = ['blida','bouira','medea','tiziouzou','djelfa','tipaza','boumerdes','aindefla','chlef','tissemsilt']
-    dataframe13.index = wilayas
+    dataframe13 = test
+    dataframe13.columns = dataframe13.columns.droplevel(0)
+    dataframe13['Total']=dataframe13.sum(axis=1)
+    # wilayas = ['blida','bouira','medea','tiziouzou','djelfa','tipaza','boumerdes','aindefla','chlef','tissemsilt']
+    # dataframe13.index = wilayas
     return dataframe13
 
-def dataset_region_client_24_gaz(wilaya=wilayas):
 
-    
-    
+def dataset_region_client_24_apport_gaz(wil=wilayas):
+
     cringe=[]
-    for key in wilayas:
+    for key in wil:
         # Access the 'nombre_abonne' DataFrame for the current key
-        nombre_abonne = wilayas[key][0]['nombre_abonne']  # Make sure this points to the right DataFrame
+        nombre_abonne = wil[key][0]['apport']  # Make sure this points to the right DataFrame
 
         # Find the index of the repeated row
         index_of_repetition = find_repeated_row(nombre_abonne)
@@ -250,37 +279,41 @@ def dataset_region_client_24_gaz(wilaya=wilayas):
             print(f"No valid index found for key: {key}")
 
     dataframe24 = pd.concat(cringe)
-    wilayass = ['blida','bouira','medea','tiziouzou','djelfa','tipaza','boumerdes','aindefla','chlef','tissemsilt']
+    wilayass = ['Blida','Bouira','Médéa','T.Ouzou','Djelfa','Tipaza','Boumerdes','Ain Defla','Chlef','Tissemssilt']
     dataframe24.index = wilayass
+    dataframe24['Total']= dataframe24.sum(axis=1)
+    dataframe24.loc['SDC'] = dataframe24.sum()
     return dataframe24
 
 
 
-
-
-def region_nombre_abonne_gaz():
+def region_apport_gaz():
     
-    dataframe13 = dataset_region_client_23_gaz()
-    dataframe24 = dataset_region_client_24_gaz()
-    region_nombre_abonne_dataframe = pd.concat([dataframe13, dataframe24], axis='columns')
+    dataframe13 = dataset_region_client_23_apport_gaz()
+    dataframe24 = dataset_region_client_24_apport_gaz()
+    region_nombre_abonne_dataframe = pd.concat([dataframe13, dataframe24], axis=1)
     region_nombre_abonne_dataframe.columns = pd.MultiIndex.from_arrays([
-        ['23'] * 2 + ['24'] * 2, region_nombre_abonne_dataframe.columns
+        ['23'] * 3 + ['24'] * 3, region_nombre_abonne_dataframe.columns
     ])
      # Calculate evolution (%) for BT and MT
       # Calculate and round evolution (%) for BT and MT
-    region_nombre_abonne_dataframe[('evolution (%)', 'BP')] = round(
-        ((region_nombre_abonne_dataframe[('24', 'BP')] - region_nombre_abonne_dataframe[('23', 'BP')]) 
-         / region_nombre_abonne_dataframe[('23', 'BP')]) * 100, 1
-    )
 
-    region_nombre_abonne_dataframe[('evolution (%)', 'MP')] = round(
-        ((region_nombre_abonne_dataframe[('24', 'MP')] - region_nombre_abonne_dataframe[('23', 'MP')]) 
-         / region_nombre_abonne_dataframe[('23', 'MP')]) * 100, 1
+    region_nombre_abonne_dataframe[('evolution (%)', 'Tx. Evol')] = round(
+        ((region_nombre_abonne_dataframe[('24', 'Total')] - region_nombre_abonne_dataframe[('23', 'Total')]) 
+         / region_nombre_abonne_dataframe[('23', 'Total')]) * 100, 1
     )
     region_nombre_abonne_dataframe=  region_nombre_abonne_dataframe.astype(float)
-    total_row = region_nombre_abonne_dataframe.sum(numeric_only=True)
-    total_row.name = 'RDC'
+    
+    combined= get_cumul_apport_gaz()
+    region_nombre_abonne_dataframe = pd.concat([region_nombre_abonne_dataframe, combined], axis=1)
+    region_nombre_abonne_dataframe[('evolution (%) cumul', 'Tx. Evol')] = round(
+        ((region_nombre_abonne_dataframe[('cumul-24', 'Total')] - region_nombre_abonne_dataframe[('cumul-23', 'Total')]) 
+         / region_nombre_abonne_dataframe[('cumul-23', 'Total')]) * 100, 1
+    )
+    # total_row = region_nombre_abonne_dataframe.sum(numeric_only=True)
+    # total_row.name = 'RDC'
 
     # Append the total row to the DataFrame
-    region_nombre_abonne_dataframe = pd.concat([region_nombre_abonne_dataframe, total_row.to_frame().T])
+    # region_nombre_abonne_dataframe = pd.concat([region_nombre_abonne_dataframe, total_row.to_frame().T])
     return region_nombre_abonne_dataframe
+

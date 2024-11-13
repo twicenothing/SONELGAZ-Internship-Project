@@ -10,6 +10,7 @@ from region_funcs_gaz import *
 from region_funcs_accroissement import *
 from region_funcs_gaz_accroissement import *
 from region_funcs_apport import *
+from region_funcs_gaz_apport import * 
 app = Flask(__name__)
 CORS(app)
 
@@ -114,7 +115,6 @@ def load_process_xl(file='Clientele DD TO 08-2024.xlsx'):
 
 
 
-
 def load_process_ventes(file='DD Blida - TDB ventes final hor tb.xlsx'):
     xl = pd.ExcelFile(file)
     df = xl.parse(0)
@@ -166,27 +166,27 @@ def load_process_ventes(file='DD Blida - TDB ventes final hor tb.xlsx'):
     achatsdf.columns  # Lower level (A, B, C, D, etc.)
     ])
     one = achatsdf.loc[:, pd.IndexSlice['électricité',['Ventes','Achats']]]
-    ventes = one.loc[:, pd.IndexSlice['électricité', 'Ventes']].squeeze()
-    achats = one.loc[:, pd.IndexSlice['électricité', 'Achats']].squeeze()
+    tventes = one.loc[:, pd.IndexSlice['électricité', 'Ventes']].squeeze()
+    tachats = one.loc[:, pd.IndexSlice['électricité', 'Achats']].squeeze()
 
 
-    tp1 = (achats - ventes).div(achats.where(achats != 0))
+    tp1 = (tachats - tventes).div(tachats.where(tachats != 0))
     one = achatsdf.loc[:, pd.IndexSlice['gaz',['Ventes','Achats']]]
-    ventes = one.loc[:, pd.IndexSlice['gaz', 'Ventes']].squeeze()
-    achats = one.loc[:, pd.IndexSlice['gaz', 'Achats']].squeeze()
+    tventes = one.loc[:, pd.IndexSlice['gaz', 'Ventes']].squeeze()
+    tachats = one.loc[:, pd.IndexSlice['gaz', 'Achats']].squeeze()
 
 
-    tp2 = (achats - ventes).div(achats.where(achats != 0))
+    tp2 = (tachats - tventes).div(tachats.where(tachats != 0))
     one = achatsdf.loc[:, pd.IndexSlice['gaz Exprimé en M3',['Ventes','Achats']]]
-    ventes = one.loc[:, pd.IndexSlice['gaz Exprimé en M3', 'Ventes']].squeeze()
-    achats = one.loc[:, pd.IndexSlice['gaz Exprimé en M3', 'Achats']].squeeze()
+    tventes = one.loc[:, pd.IndexSlice['gaz Exprimé en M3', 'Ventes']].squeeze()
+    tachats = one.loc[:, pd.IndexSlice['gaz Exprimé en M3', 'Achats']].squeeze()
 
 
-    tp3 = (achats - ventes).div(achats.where(achats != 0))
+    tp3 = (tachats - tventes).div(tachats.where(tachats != 0))
     tp = pd.concat([tp1, tp2, tp3], axis=1)
     tp.columns = ['électricité','gaz','gaz Exprimé en M3']
     
-    return ventes,achats,tp
+    return ventes,achatsdf,tp
 
 def get_wilaya(wilaya_code):
     mapping = {
@@ -225,13 +225,20 @@ def upload_file_ventes(wilaya_code):
        
         if wilaya in wilayas:
             
-            wilayas_ventes[f"{wilaya}-ventes"].append(achats)
-            wilayas_ventes[f"{wilaya}-ventes"].append(ventes)
-            wilayas_ventes[f"{wilaya}-ventes"].append(tp)
+            wilayas_ventes[wilaya].append({
+            "ventes": ventes,
+            "achaats": achats,
+            "tp": tp,
+           
+        })
+
+
+
             # For other types like `tp`, append where 
             # appropriate in the wilayas dictionary
+            # print(wilayas[wilaya][0]['nombre_abonne'])
             wilayaname = wilaya + '-ventes'
-            print(wilayas_ventes[wilayaname])
+            print(wilayas_ventes[wilayaname][0]['ventes'])
         else:
             return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404, print(f'{wilaya} not found')
 
@@ -239,6 +246,7 @@ def upload_file_ventes(wilaya_code):
 
 
     except Exception as e:
+        
         return jsonify({'error': str(e)}), 500
 
 
@@ -344,6 +352,17 @@ def region_apport_dt():
 
     return jsonify({'message':'done!'})   
 
+@app.route('/region_apport_gaz')
+def region_apport_gaz_dt():
+    flag = dictionary_is_full(wilayas)
+    if flag == True:
+        region_nombre_abonne_dataframe_gaz = region_apport_gaz()
+        print(region_nombre_abonne_dataframe_gaz)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'})   
 
 
 
