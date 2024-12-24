@@ -1,60 +1,39 @@
 import pandas as pd
 import numpy as np
+import os
+from openpyxl import Workbook
+from openpyxl.styles import Border, Side
+from openpyxl.utils.dataframe import dataframe_to_rows
 from flask import Flask,send_file, jsonify
 from flask import request, send_file, jsonify
 from flask_cors import CORS
 from funcs import *
+from region_funcs import *
+from data import *
+from region_funcs_gaz import *
+from region_funcs_accroissement import *
+from region_funcs_gaz_accroissement import *
+from region_funcs_apport import *
+from region_funcs_gaz_apport import *
+from creances.creance import load_process_creances, recette_df
+from creances.solde_df import solde_dataframe
+from creances.prise_en_charge_df import prise_en_charge_dataframe
+from creances.encaissement_df import encaissement_dataframe
+from creances.solde23_df import load_old_data_creance
+from creances.recettes_df import recettes_tb
+from creances.ddc_df import ddc_tb
+from creances.old_data import load_solde_23
+
+pd.set_option('display.float_format', '{:.2f}'.format)
+
+
+
+
 
 app = Flask(__name__)
 CORS(app)
 
-wilayas = {
-    "blida":[],
-    
-    "chlef":[],
-   
-    "bouira":[],
-    
-    "tiziouzou":[],
-   
-    "djelfa":[],
-   
-    "medea":[],
-    
-    "boumerdes":[],
-    
-    "tissemsilt":[],
-    
-    "tipaza":[],
-    
-    "aindefla":[],
-}
-
-
-
-wilayas_ventes={
-    "blida-ventes":[],
-    "chlef-ventes":[],
-    "bouira-ventes":[],
-    "tiziouzou-ventes":[],
-    "djelfa-ventes":[],
-    "medea-ventes":[],
-    "boumerdes-ventes":[],
-    "tissemsilt-ventes":[],
-    "tipaza-ventes":[],
-    "aindefla-ventes":[]
-}
-    
-
-
-
-
-
-
-
-
 #Functions
-
 
 # made some changes to this function it should work all fine tho 
 def load_process_xl(file='Clientele DD TO 08-2024.xlsx'):
@@ -155,7 +134,6 @@ def load_process_xl(file='Clientele DD TO 08-2024.xlsx'):
 
 
 
-
 def load_process_ventes(file='DD Blida - TDB ventes final hor tb.xlsx'):
     xl = pd.ExcelFile(file)
     df = xl.parse(0)
@@ -207,27 +185,27 @@ def load_process_ventes(file='DD Blida - TDB ventes final hor tb.xlsx'):
     achatsdf.columns  # Lower level (A, B, C, D, etc.)
     ])
     one = achatsdf.loc[:, pd.IndexSlice['électricité',['Ventes','Achats']]]
-    ventes = one.loc[:, pd.IndexSlice['électricité', 'Ventes']].squeeze()
-    achats = one.loc[:, pd.IndexSlice['électricité', 'Achats']].squeeze()
+    tventes = one.loc[:, pd.IndexSlice['électricité', 'Ventes']].squeeze()
+    tachats = one.loc[:, pd.IndexSlice['électricité', 'Achats']].squeeze()
 
 
-    tp1 = (achats - ventes).div(achats.where(achats != 0))
+    tp1 = (tachats - tventes).div(tachats.where(tachats != 0))
     one = achatsdf.loc[:, pd.IndexSlice['gaz',['Ventes','Achats']]]
-    ventes = one.loc[:, pd.IndexSlice['gaz', 'Ventes']].squeeze()
-    achats = one.loc[:, pd.IndexSlice['gaz', 'Achats']].squeeze()
+    tventes = one.loc[:, pd.IndexSlice['gaz', 'Ventes']].squeeze()
+    tachats = one.loc[:, pd.IndexSlice['gaz', 'Achats']].squeeze()
 
 
-    tp2 = (achats - ventes).div(achats.where(achats != 0))
+    tp2 = (tachats - tventes).div(tachats.where(tachats != 0))
     one = achatsdf.loc[:, pd.IndexSlice['gaz Exprimé en M3',['Ventes','Achats']]]
-    ventes = one.loc[:, pd.IndexSlice['gaz Exprimé en M3', 'Ventes']].squeeze()
-    achats = one.loc[:, pd.IndexSlice['gaz Exprimé en M3', 'Achats']].squeeze()
+    tventes = one.loc[:, pd.IndexSlice['gaz Exprimé en M3', 'Ventes']].squeeze()
+    tachats = one.loc[:, pd.IndexSlice['gaz Exprimé en M3', 'Achats']].squeeze()
 
 
-    tp3 = (achats - ventes).div(achats.where(achats != 0))
+    tp3 = (tachats - tventes).div(tachats.where(tachats != 0))
     tp = pd.concat([tp1, tp2, tp3], axis=1)
     tp.columns = ['électricité','gaz','gaz Exprimé en M3']
     
-    return ventes,achats,tp
+    return ventes,achatsdf,tp
 
 def get_wilaya(wilaya_code):
     mapping = {
@@ -247,9 +225,6 @@ def get_wilaya(wilaya_code):
 
 
 
-
-
-
 ##Routes
 
 @app.route('/upload-ventes/<wilaya_code>', methods=['POST'])
@@ -257,32 +232,41 @@ def upload_file_ventes(wilaya_code):
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file part in the request'}), 400
-
+       
         file = request.files['file']
-
+      
         # Process the file
         ventes, achats, tp = load_process_ventes(file)
+     
         wilaya = get_wilaya(wilaya_code)
        
-
        
        
         if wilaya in wilayas:
             
-            wilayas_ventes[f"{wilaya}-ventes"].append(achats)
-            wilayas_ventes[f"{wilaya}-ventes"].append(ventes)
-            wilayas_ventes[f"{wilaya}-ventes"].append(tp)
+            wilayas_ventes[wilaya].append({
+            "ventes": ventes,
+            "achaats": achats,
+            "tp": tp,
+           
+        })
+            
+
+
             # For other types like `tp`, append where 
             # appropriate in the wilayas dictionary
+            # print(wilayas[wilaya][0]['nombre_abonne'])
             wilayaname = wilaya + '-ventes'
-            print(wilayas_ventes[wilayaname])
+            # print(wilayas_ventes[wilayaname][0]['ventes'])
         else:
+        
             return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404, print(f'{wilaya} not found')
 
         return jsonify({'message': f'Data successfully appended for {wilaya}'})
 
 
     except Exception as e:
+        print(e)
         return jsonify({'error': str(e)}), 500
 
 
@@ -299,17 +283,54 @@ def upload_file(wilaya_code):
         nombre_abonne, accroissement, apport,apport_nouv = load_process_xl(file)
         wilaya = get_wilaya(wilaya_code)
 
-       
-       
         if wilaya in wilayas:
             
-            wilayas[f"{wilaya}"].append(nombre_abonne)
-            wilayas[f"{wilaya}"].append(accroissement)
-            wilayas[f"{wilaya}"].append(apport)
-            wilayas[f"{wilaya}"].append(apport_nouv)
+            wilayas[wilaya].append({
+            "nombre_abonne": nombre_abonne,
+            "accroissement": accroissement,
+            "apport": apport,
+            "apport_nouv": apport_nouv
+        })
             # For other types like `tp`, append where 
             # appropriate in the wilayas dictionary
-            print(wilayas[wilaya])
+            # print(wilayas[wilaya][0]['nombre_abonne'])
+        
+            
+        else:
+            return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404
+
+        return jsonify({'message': f'Data successfully appended for {wilaya}'})
+
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/upload-solde/<wilaya_code>', methods=['POST'])
+def upload_file_solde(wilaya_code):
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part in the request'}), 400
+
+        file = request.files['file']
+
+        # Process the file
+        solde = load_process_creances(file)
+        recette = recette_df(file)
+        wilaya = get_wilaya(wilaya_code)
+
+        if wilaya in wilayas:
+            
+            wilayas_creance[wilaya].append({
+            "solde": solde,
+            "recette": recette,
+        })
+            # For other types like `tp`, append where 
+            # appropriate in the wilayas dictionary
+            # print(wilayas_creance[wilaya][0]['solde'])
+            # print('\n')
+            # print(wilayas_creance[wilaya][0]['recette'])
+        
             
         else:
             return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404
@@ -322,7 +343,279 @@ def upload_file(wilaya_code):
 
 
 
+
+
+
+
+@app.route('/tableau_de_borde', methods=['POST'])
+def upload_file_TB():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part in the request'}), 400
+
+        file = request.files['file']
+        directory = os.path.join(os.getcwd(), 'tableau_de_bord')
+        os.makedirs(directory, exist_ok=True)  # Create the folder if it doesn't exist
+
+        # Define the file path
+        file_path = os.path.join(directory, 'TB.xlsx')
+
+        # Save the file to disk
+        file.save(file_path)
+
+        return jsonify({'success': True})
+
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@app.route('/region_clientel')
+def getolddataframe():
+    flag = dictionary_is_full(wilayas)
+    if flag == True:
+        region_nombre_abonne_dataframe = region_nombre_abonne()
+        print(region_nombre_abonne_dataframe)
+       # Create a workbook and sheet
+        wb = Workbook()
+        ws = wb.active
+
+        # Add DataFrame rows to the sheet
+        for r_idx, row in enumerate(dataframe_to_rows(region_nombre_abonne_dataframe, index=False, header=True), start=1):
+            ws.append(row)
+
+        # Define a simple border style
+        thin_border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
+
+        # Apply borders to all cells
+        for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
+            for cell in row:
+                cell.border = thin_border
+
+        # Save the workbook
+        wb.save("simple_table_with_outlines.xlsx")
+    else:
+        print('Please fill all the wilayas data')
     
+
+    return jsonify({'message':'done!'})
+
+
+
+@app.route('/reegion_clientel_gaz')
+def region_clientel_gaz():
+    flag = dictionary_is_full(wilayas)
+    if flag == True:
+        region_nombre_abonne_dataframe = region_nombre_abonne_gaz()
+        print(region_nombre_abonne_dataframe)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'})   
+
+
+@app.route('/region_accroissement')
+def region_accroissement_dt():
+    flag = dictionary_is_full(wilayas)
+    if flag == True:
+        region_nombre_abonne_dataframe = region_accroissement()
+        print(region_nombre_abonne_dataframe)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'})   
+
+
+@app.route('/region_accroissement_gaz')
+def region_accroissement_dt_gaz():
+    flag = dictionary_is_full(wilayas)
+    if flag == True:
+        region_nombre_abonne_dataframe_gaz = region_accroissement_gaz()
+        print(region_nombre_abonne_dataframe_gaz)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'})   
+
+
+
+@app.route('/region_apport')
+def region_apport_dt():
+    flag = dictionary_is_full(wilayas)
+    if flag == True:
+        region_nombre_abonne_dataframe_gaz = region_apport()
+        print(region_nombre_abonne_dataframe_gaz)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'})   
+
+@app.route('/region_apport_gaz')
+def region_apport_gaz_dt():
+    flag = dictionary_is_full(wilayas)
+    if flag == True:
+        region_nombre_abonne_dataframe_gaz = region_apport_gaz()
+        print(region_nombre_abonne_dataframe_gaz)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'})   
+
+@app.route('/soldedf')
+def soldedf():
+    flag = dictionary_is_full(wilayas_creance)
+    if flag == True:
+        sold_df = solde_dataframe()
+        print(sold_df)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'})
+
+
+@app.route('/pcdf')
+def pcdf():
+    flag = dictionary_is_full(wilayas_creance)
+    if flag == True:
+        pc_df = prise_en_charge_dataframe()
+        print(pc_df)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'})   
+
+
+@app.route('/encaissement')
+def encaissement():
+    flag = dictionary_is_full(wilayas_creance)
+    if flag == True:
+        encaissement_df = encaissement_dataframe()
+        print(encaissement_df)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'})   
+
+@app.route('/testing')
+def testing():
+    
+    sold23 = load_old_data_creance()
+    print(sold23)
+  
+    
+
+    return jsonify({'message':'done!'}) 
+
+@app.route('/taux')
+def taux():
+    
+    sold = solde_dataframe()
+    solde23= load_old_data_creance()
+    encaissement = encaissement_dataframe()
+    solde23.columns = sold.columns
+    prise_en_charge = prise_en_charge_dataframe()
+    solde23 = solde23.droplevel([0, 1], axis=1)
+    encaissement = encaissement.droplevel([0, 1], axis=1)
+    prise_en_charge = prise_en_charge.droplevel([0, 1], axis=1)
+    prise_en_charge.replace(0,np.nan,inplace=True)
+    solde23.replace(0,np.nan,inplace=True)
+
+
+    tx_encaissement = (encaissement / (solde23 + prise_en_charge))* 100
+    tx_encaissement = tx_encaissement.fillna(0)
+    print(tx_encaissement)
+    
+    
+
+    return jsonify({'message':'done!'}) 
+
+
+
+@app.route('/recettes')
+def recettes_tb_link():
+    flag = dictionary_is_full(wilayas_creance)
+    if flag == True:
+        recettes_df = recettes_tb()
+        print(recettes_df)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'})   
+
+
+@app.route('/ddc')
+def ddc_link():
+    flag = dictionary_is_full(wilayas_creance)
+    if flag == True:
+        ddc_df = ddc_tb()
+        print(ddc_df)
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'}) 
+
+
+@app.route('/date')
+def datee():
+    print(total_days)
+    return jsonify({'message':'done!'})
+
+
+
+@app.route('/evolution')
+def evolutionsolde():
+    flag = dictionary_is_full(wilayas_creance)
+    if flag == True:
+        solde = solde_dataframe()
+        solde_old = load_solde_23()
+        solde_old.columns = solde.columns
+        solde.replace(0,np.nan,inplace=True)
+        solde_old.replace(0,np.nan,inplace=True)
+        evolution = (solde - solde_old)/solde_old*100
+        print(evolution)
+
+
+    else:
+        print('Please fill all the wilayas data')
+    
+
+    return jsonify({'message':'done!'}) 
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

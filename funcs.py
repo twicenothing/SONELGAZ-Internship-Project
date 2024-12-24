@@ -33,8 +33,6 @@ def find_repeated_index(df):
 
 
 
-
-
 # this serves the same thing as the last function but returns the mounth instead of the int
 def find_repeated_row(df):
     """
@@ -61,3 +59,34 @@ def find_repeated_row(df):
             return df.index.values[i-1]
 
     return None  # In case no repeated rows are found
+
+# checks if you set all the values in the wilayas dictionary
+
+def dictionary_is_full(dictionary):
+    flag = True
+    for key in dictionary.keys():
+        if dictionary[key] == [] :
+            flag = False
+    return flag
+
+
+
+# finds the last mounth with uploaded data in the tableau de bord to use it in the region
+def last_month_with_data(df):
+    # Get unique top-level columns
+    months = df.columns.get_level_values(0).unique()
+    
+    # Check if the last column is 'CUMUL' and exclude it if present
+    if months[-1] == 'CUMUL':
+        months = months[:-1]
+    
+    # Loop in reverse to find the last month with non-zero data
+    for month in reversed(months):
+        # Select columns for the current month
+        month_data = df[month]
+        
+        # Check if any value in this month's columns is non-zero
+        if (month_data != 0).any().any():
+            return month  # Return the month name as soon as we find non-zero data
+    
+    return None  # Return None if all months have only zero data
