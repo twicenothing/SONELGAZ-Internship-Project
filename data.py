@@ -4,23 +4,24 @@ from datetime import datetime, date, timedelta
 wilayas = {
     "blida":[],
     
-    "chlef":[],
-   
     "bouira":[],
-    
-    "tiziouzou":[],
-   
-    "djelfa":[],
-   
+
     "medea":[],
-    
+
+    "tiziouzou":[],
+
+    "djelfa":[],
+
+    "tipaza":[],
+
     "boumerdes":[],
-    
+
+    "aindefla":[],
+
+    "chlef":[],
+     
     "tissemsilt":[],
     
-    "tipaza":[],
-    
-    "aindefla":[],
 }
 
 
@@ -28,46 +29,104 @@ wilayas = {
 wilayas_ventes={
     "blida":[],
     
-    "chlef":[],
-   
     "bouira":[],
-    
-    "tiziouzou":[],
-   
-    "djelfa":[],
-   
+
     "medea":[],
-    
+
+    "tiziouzou":[],
+
+    "djelfa":[],
+
+    "tipaza":[],
+
     "boumerdes":[],
-    
+
+    "aindefla":[],
+
+    "chlef":[],
+     
     "tissemsilt":[],
     
-    "tipaza":[],
-    
-    "aindefla":[],
 }
 
 wilayas_creance={
     "blida":[],
     
-    "chlef":[],
-   
     "bouira":[],
-    
-    "tiziouzou":[],
-   
-    "djelfa":[],
-   
+
     "medea":[],
-    
+
+    "tiziouzou":[],
+
+    "djelfa":[],
+
+    "tipaza":[],
+
     "boumerdes":[],
-    
+
+    "aindefla":[],
+
+    "chlef":[],
+     
     "tissemsilt":[],
     
-    "tipaza":[],
-    
-    "aindefla":[],
 }
+
+wilayas_rnc={
+    "blida":[],
+    
+    "bouira":[],
+
+    "medea":[],
+
+    "tiziouzou":[],
+
+    "djelfa":[],
+
+    "tipaza":[],
+
+    "boumerdes":[],
+
+    "aindefla":[],
+
+    "chlef":[],
+     
+    "tissemsilt":[],
+    
+}
+
+wilayas_rnc_gaz={
+    "blida":[],
+    
+    "bouira":[],
+
+    "medea":[],
+
+    "tiziouzou":[],
+
+    "djelfa":[],
+
+    "tipaza":[],
+
+    "boumerdes":[],
+
+    "aindefla":[],
+
+    "chlef":[],
+     
+    "tissemsilt":[],
+    
+}
+
+
+
+
+
+
+
+
+
+
     
 TB = 'tableau_de_bord\TB.xlsx'
 
@@ -85,4 +144,4 @@ def last_day_of_month(year, month):
         return date(year, month + 1, 1) - timedelta(days=1)
 
 # Calculate total days from the start of the year to the last day of the current month
-total_days = (last_day_of_month(current_year, current_month) - date(current_year, 1, 1)).days + 1
+total_days = (last_day_of_month(current_year, current_month) - date(current_year, 1, 1)).days + 1 

@@ -90,3 +90,18 @@ def last_month_with_data(df):
             return month  # Return the month name as soon as we find non-zero data
     
     return None  # Return None if all months have only zero data
+
+
+
+def last_month_with_data_RNC(df):
+    months = df.columns
+    desired = ''
+    for month in reversed(months):
+        # Select columns for the current month
+        month_data = df.loc['étude',month]
+        
+        # Check if any value in this month's columns is non-zero
+        if (month_data != 0):
+            desired = month
+            break
+    return desired

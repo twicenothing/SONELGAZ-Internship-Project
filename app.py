@@ -26,7 +26,7 @@ from creances.old_data import load_solde_23
 from ventes.region_ventes import dataset_region_ventes_24, dataset_region_ventes_23, region_ventes,get_cumul_ventes
 from ventes.region_ventes_gaz import dataset_region_ventes_24_gaz, dataset_region_ventes_23_gaz,region_ventes_gaz,get_cumul_ventes_gaz
 from RCN.rdc_dataframes import *
-from RCN.rdc_TB import branchements_simples_elecrticite
+from RCN.rdc_TB import branchements_simples_elecrticite,branchements_simples_gaz,extension_portfeuille_elec,extension_portfeuille_gaz,extension_affaires_elec,branchment_affaires_elec,extension_affaires_gaz, branchment_affaires_gaz
 
 
 pd.set_option('display.float_format', '{:.2f}'.format)
@@ -234,28 +234,56 @@ def fill_dict():
     for key, filename in zip(wilayas_rnc.keys(), wilayas_rnc_file):
 # Call your function and unpack the returned values
         branchement = branchement_dataframe_elec(filename)
+        extension = extension_dataframe_elec(filename)
         
         # Append the returned values to the respective key
         wilayas_rnc[key].append({
             "branchement": branchement,
+            "extension": extension,  
+        })
+
+def fill_dict_gaz():
+    for key, filename in zip(wilayas_rnc.keys(), wilayas_rnc_file):
+# Call your function and unpack the returned values
+        branchement = branchement_dataframe_gaz(filename)
+        extension = extension_dataframe_gaz()
+        
+        
+        # Append the returned values to the respective key
+        wilayas_rnc_gaz[key].append({
+            "branchement": branchement,
+            "extension": extension,
+            
             
         })
 
 
 @app.route('/fill')
 def filldictionary():
+    fill_dict()
+        
+    return jsonify({'message':'filled dict',}),200
+
+    
+
+@app.route('/fillgaz')
+def filldictionarygaz():
     try :
-        fill_dict()
+        fill_dict_gaz()
         
         return jsonify({'message':'filled dict',}),200
     except Exception as e:
         return jsonify({'message':str(e)}),500
 
+
+
+
+
     
 
 @app.route('/tableauteshting')
 def tableauteshting():
-    result = branchements_simples_elecrticite()
+    result = branchment_affaires_gaz()
     print(result)
     return jsonify({'message':'done!',}),200
 
