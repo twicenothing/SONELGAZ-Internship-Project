@@ -2,10 +2,11 @@ import pandas as pd
 import numpy as np
 import os
 from openpyxl import Workbook
-from openpyxl.styles import Border, Side
+from openpyxl.styles import Border, Side, Alignment, PatternFill, Font
 from openpyxl.utils.dataframe import dataframe_to_rows
 from flask import Flask,send_file, jsonify
 from flask import request, send_file, jsonify
+from openpyxl import load_workbook
 from flask_cors import CORS
 from funcs import *
 from region_funcs import *
@@ -778,6 +779,155 @@ def workspacefour():
 
 
 
+@app.route('/get_tb')
+def get_tableau_de_bord():
+    flag = dictionary_is_full(wilayas)
+    if flag == True:
+        w = region_nombre_abonne()
+        nombre_abbo_gaz = region_nombre_abonne_gaz()
 
+        # Save the first DataFrame to Excel
+        file_name = 'TB_test.xlsx'
+        with pd.ExcelWriter(file_name, engine='openpyxl') as writer:
+            w.to_excel(writer, sheet_name='Clientele', startrow=4)
+
+        # Customize the first DataFrame in the Excel file
+        customize_excel_table(
+            file_name=file_name,
+            sheet_name='Clientele',
+            start_row=5,  # Data starts from row 5
+            title="Nombre d'abonnés électricité",
+            last_row_color="87CEEB"  # Light blue for the last row
+        )
+
+        # Add a gap of 4 rows before the second table
+        gap_row_2nd = w.shape[0] + 9  # Adds a 4-row gap between the two tables
+
+        # Save the second DataFrame to the same Excel sheet, with a gap between tables row-wise
+        with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+            nombre_abbo_gaz.to_excel(writer, sheet_name='Clientele', startrow=gap_row_2nd, startcol=0)
+
+        # Customize the second DataFrame in the Excel file
+        customize_excel_table(
+            file_name=file_name,
+            sheet_name='Clientele',
+            start_row=gap_row_2nd + 1,  # Adjust the row number after the second DataFrame
+            title="Nombre d'abonnés gaz",
+            last_row_color="90EE90"  # Light green for the last row
+        )
+
+        # Add a gap of 4 rows before the third table
+        gap_row_3rd = gap_row_2nd + nombre_abbo_gaz.shape[0] + 5  # Adds a 4-row gap between the second and third table
+
+        accroissement_elec = region_accroissement()
+        # Save the third DataFrame to the same Excel sheet, with a gap between tables row-wise
+        with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+            accroissement_elec.to_excel(writer, sheet_name='Clientele', startrow=gap_row_3rd, startcol=0)
+
+        # Customize the third DataFrame in the Excel file
+        customize_excel_table(
+            file_name=file_name,
+            sheet_name='Clientele',
+            start_row=gap_row_3rd + 1,  # Adjust the row number after the third DataFrame
+            title="Accroissement abonnées électricité",
+            last_row_color="FFC0CB"  # Light pink for the last row (change this color as needed)
+        )
+
+        # Add a gap of 4 rows before the fourth table
+        gap_row_4rth = gap_row_3rd + accroissement_elec.shape[0] + 5  # Adds a 4-row gap between the third and fourth table
+
+        accroissement_gaz = region_accroissement_gaz()
+        # Save the fourth DataFrame to the same Excel sheet, with a gap between tables row-wise
+        with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+            accroissement_gaz.to_excel(writer, sheet_name='Clientele', startrow=gap_row_4rth, startcol=0)
+
+        # Customize the fourth DataFrame in the Excel file
+        customize_excel_table(
+            file_name=file_name,
+            sheet_name='Clientele',
+            start_row=gap_row_4rth + 1,  # Adjust the row number after the fourth DataFrame
+            title="Accroissement abonnées gaz",
+            last_row_color="D8B7DD"  # Light pink for the last row (change this color as needed)
+        )
+
+        # Add a gap of 4 rows before the fifth table
+        gap_row_5th = gap_row_4rth + accroissement_gaz.shape[0] + 5  # Adds a 4-row gap between the fourth and fifth table
+
+        apport_elec = region_apport()
+        # Save the fifth DataFrame to the same Excel sheet, with a gap between tables row-wise
+        with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+            apport_elec.to_excel(writer, sheet_name='Clientele', startrow=gap_row_5th, startcol=0)
+
+        # Customize the fifth DataFrame in the Excel file
+        customize_excel_table(
+            file_name=file_name,
+            sheet_name='Clientele',
+            start_row=gap_row_5th + 1,  # Adjust the row number after the fifth DataFrame
+            title="Nouveaux abonnées électricité",
+            last_row_color="FFFFE0"  # Light yellow for the last row
+        )
+        gap_row_6th = gap_row_5th + apport_elec.shape[0] + 5  # Adds a 4-row gap between the fourth and fifth table
+
+        apport_gaz = region_apport_gaz()
+        # Save the fifth DataFrame to the same Excel sheet, with a gap between tables row-wise
+        with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+            apport_gaz.to_excel(writer, sheet_name='Clientele', startrow=gap_row_6th, startcol=0)
+
+        # Customize the fifth DataFrame in the Excel file
+        customize_excel_table(
+            file_name=file_name,
+            sheet_name='Clientele',
+            start_row=gap_row_6th + 1,  # Adjust the row number after the fifth DataFrame
+            title="Nouveaux abonnées gaz",
+            last_row_color="FFA500"  # Light yellow for the last row
+        )
+
+    else:
+        print('Please fill all the wilayas data')
+    
+    return jsonify({'message': 'done!'})
+
+def customize_excel_table(file_name, sheet_name, start_row, title, last_row_color):
+    # Load the workbook and select the sheet
+    wb = load_workbook(file_name)
+    ws = wb[sheet_name]
+
+    # Define styles
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    title_font = Font(bold=True, size=14)
+    centered_alignment = Alignment(horizontal='center', vertical='center')
+    last_row_fill = PatternFill(start_color=last_row_color, end_color=last_row_color, fill_type='solid')
+
+    # Add a title
+    ws.merge_cells(start_row=start_row - 1, start_column=1, end_row=start_row - 1, end_column=ws.max_column)
+    title_cell = ws.cell(row=start_row - 1, column=1)
+    title_cell.value = title
+    title_cell.font = title_font
+    title_cell.alignment = centered_alignment
+
+    # Adjust column width and row height for the table
+    for col in ws.iter_cols(min_col=1, max_col=ws.max_column):
+        col_letter = col[0].column_letter
+        ws.column_dimensions[col_letter].width = 15  # Adjust column width
+
+    for row in range(start_row, ws.max_row + 1):
+        ws.row_dimensions[row].height = 20  # Adjust row height
+
+    # Apply borders and style to the table
+    for row in ws.iter_rows(min_row=start_row, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
+        for cell in row:
+            cell.border = thin_border
+
+    # Color the last row
+    for cell in ws[ws.max_row]:
+        cell.fill = last_row_fill
+
+    # Save the workbook
+    wb.save(file_name)
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
