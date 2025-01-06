@@ -440,22 +440,108 @@ def datee():
 
 
 
-@app.route('/get_tb')
+@app.route('/get_tb', methods=['GET'])
 def get_tableau_de_bord():
-    flag = dictionary_is_full(wilayas)
-    if flag == True:
+    try:
         TB_clientele()
         TB_ventes()
         TB_ventes_gaz()
         TB_RCN_elec()
         TB_RCN_gaz()
         TB_solde()
-        print("Tableau created successfully")
+        
+        # Return success response immediately
+        return jsonify({"status": "success", "message": "Tableau de bord generated successfully"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
-    else:
-        print('Please fill all the wilayas data')
-    
-    return jsonify({'message': 'done!'})
+
+
+@app.route('/upload-rcn/<wilaya_code>', methods=['POST'])
+def upload_file_rcn(wilaya_code):
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part in the request'}), 400
+
+        file = request.files['file']
+        wilaya = get_wilaya(wilaya_code)
+
+        if wilaya in wilayas:
+            try:
+                # Process the file for electricity
+                branchement = branchement_dataframe_elec(file)
+                # Need to seek back to start of file as it was read in previous operation
+                file.seek(0)
+                extension = extension_dataframe_elec(file)
+                
+                wilayas_rnc[wilaya].append({
+                    "branchement": branchement,
+                    "extension": extension
+                })
+
+                # Reset file pointer again
+                file.seek(0)
+                
+                # Process the file for gas
+                branchement_gaz = branchement_dataframe_gaz(file)
+                file.seek(0)
+                extension_gaz = extension_dataframe_gaz()  # Note: This doesn't seem to need a file parameter
+                
+                wilayas_rnc_gaz[wilaya].append({
+                    "branchement": branchement_gaz,
+                    "extension": extension_gaz
+                })
+                
+                return jsonify({'message': f'Data successfully appended for {wilaya}'})
+            except Exception as processing_error:
+                print(f"Error processing file: {str(processing_error)}")  # For debugging
+                return jsonify({'error': f'Error processing file: {str(processing_error)}'}), 500
+        else:
+            return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404
+
+    except Exception as e:
+        print(f"General error: {str(e)}")  # For debugging
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/check-wilaya/<wilaya_code>')
+def check_wilaya(wilaya_code):
+    try:
+        wilaya = get_wilaya(wilaya_code)
+        if wilaya == "invalid":
+            return jsonify({'error': 'Invalid wilaya code'}), 400
+            
+        status = check_wilaya_status(wilaya)
+        
+        return jsonify({
+            'wilaya': wilaya,
+            'status': status,
+            'is_complete': all(status.values())
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/check-all-wilayas')
+def check_all_wilayas():
+    try:
+        all_wilayas_status = {}
+        
+        for wilaya in wilayas.keys():
+            status = check_wilaya_status(wilaya)
+            all_wilayas_status[wilaya] = {
+                'status': status,
+                'is_complete': all(status.values())
+            }
+        
+        return jsonify({
+            'wilayas': all_wilayas_status,
+            'all_complete': all(wilaya_data['is_complete'] for wilaya_data in all_wilayas_status.values())
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

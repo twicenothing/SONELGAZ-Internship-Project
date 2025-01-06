@@ -145,3 +145,17 @@ def last_day_of_month(year, month):
 
 # Calculate total days from the start of the year to the last day of the current month
 total_days = (last_day_of_month(current_year, current_month) - date(current_year, 1, 1)).days + 1 
+
+def check_wilaya_status(wilaya_name):
+    """
+    Check if a specific wilaya has data in all dictionaries
+    Returns a dictionary with the status of each data category
+    """
+    status = {
+        'clientele': len(wilayas.get(wilaya_name, [])) > 0,
+        'ventes': len(wilayas_ventes.get(wilaya_name, [])) > 0,
+        'creance': len(wilayas_creance.get(wilaya_name, [])) > 0,
+        'rnc': len(wilayas_rnc.get(wilaya_name, [])) > 0,
+        'rnc_gaz': len(wilayas_rnc_gaz.get(wilaya_name, [])) > 0
+    }
+    return status 
