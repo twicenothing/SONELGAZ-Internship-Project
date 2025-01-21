@@ -18,6 +18,7 @@ from creances.solde23_df import *
 from creances.recettes_df import *
 from creances.ddc_df import ddc_tb
 from creances.old_data import *
+from elec.elec_tb import *
 
 
 
@@ -520,5 +521,171 @@ def TB_solde():
         sheet_name=name,
         start_row=gap_row_8th + 1,  # Adjust the row number after the fifth DataFrame
         title="Evolution solde /fin d'année",
+        last_row_color="D3D3D3"  # Light yellow for the last row
+    )
+
+
+
+def TB_elec():
+    w = nombre_abo_tb()
+    name='élec'
+    # Save the first DataFrame to Excel
+    file_name = 'TB_test.xlsx'
+    with pd.ExcelWriter(file_name, engine='openpyxl', mode='a') as writer:
+        w.to_excel(writer, sheet_name=name, startrow=4)
+
+    # Customize the first DataFrame in the Excel file
+    customize_excel_table(
+        file_name=file_name,
+        sheet_name=name,
+        start_row=5,  # Data starts from row 5
+        title="I-  Nombre d'abonnés",
+        last_row_color="87CEEB"  # Light blue for the last row
+    )
+     # Add a gap of 4 rows before the second table
+    gap_row_2nd = w.shape[0] + 9  # Adds a 4-row gap between the two tables
+    nombre_abbo_gaz = accroissement_tb()
+    # Save the second DataFrame to the same Excel sheet, with a gap between tables row-wise
+    with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+        nombre_abbo_gaz.to_excel(writer, sheet_name=name, startrow=gap_row_2nd, startcol=0)
+
+    # Customize the second DataFrame in the Excel file
+    customize_excel_table(
+        file_name=file_name,
+        sheet_name=name,
+        start_row=gap_row_2nd + 1,  # Adjust the row number after the second DataFrame
+        title="II-  Accroissement abonnés",
+        last_row_color="90EE90"  # Light green for the last row
+    )
+    gap_row_3rd = gap_row_2nd + nombre_abbo_gaz.shape[0] + 5  # Adds a 4-row gap between the second and third table
+
+    accroissement_elec = resiliation_tb()
+    # Save the third DataFrame to the same Excel sheet, with a gap between tables row-wise
+    with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+        accroissement_elec.to_excel(writer, sheet_name=name, startrow=gap_row_3rd, startcol=0)
+
+    # Customize the third DataFrame in the Excel file
+    customize_excel_table(
+        file_name=file_name,
+        sheet_name=name,
+        start_row=gap_row_3rd + 1,  # Adjust the row number after the third DataFrame
+        title="II-  Résiliation",
+        last_row_color="FFC0CB"  # Light pink for the last row (change this color as needed)
+    )
+
+  
+
+
+
+    tx_encaissement = apport_tb()
+
+    # Correct calculation for gap_row_4rth
+    gap_row_4rth = gap_row_3rd + accroissement_elec.shape[0] + 5  # Adds a 4-row gap after the third DataFrame
+
+    # Save the fourth DataFrame (tx_encaissement) to the same Excel sheet
+    with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+        tx_encaissement.to_excel(writer, sheet_name=name, startrow=gap_row_4rth, startcol=0)
+
+    # Customize the fourth DataFrame in the Excel file
+    customize_excel_table(
+        file_name=file_name,
+        sheet_name=name,
+        start_row=gap_row_4rth + 1,  # Adjust the row number for the title
+        title="II-  Apport",
+        last_row_color="D8B7DD"  # Light purple for the last row
+    )
+    # Add a gap of 4 rows before the fifth table
+    gap_row_5th = gap_row_4rth + tx_encaissement.shape[0] + 5  # Adds a 4-row gap between the fourth and fifth table
+
+    apport_elec = reabonne_tb()
+    # Save the fifth DataFrame to the same Excel sheet, with a gap between tables row-wise
+    with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+        apport_elec.to_excel(writer, sheet_name=name, startrow=gap_row_5th, startcol=0)
+
+    # Customize the fifth DataFrame in the Excel file
+    customize_excel_table(
+        file_name=file_name,
+        sheet_name=name,
+        start_row=gap_row_5th + 1,  # Adjust the row number after the fifth DataFrame
+        title="II-  Réabonnement",
+        last_row_color="FFFFE0"  # Light yellow for the last row
+    )
+    gap_row_6th = gap_row_5th + apport_elec.shape[0] + 5  # Adds a 4-row gap between the fourth and fifth table
+
+    apport_gaz = apport_nv_tb()
+    # Save the fifth DataFrame to the same Excel sheet, with a gap between tables row-wise
+    with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+        apport_gaz.to_excel(writer, sheet_name=name, startrow=gap_row_6th, startcol=0)
+
+    # Customize the fifth DataFrame in the Excel file
+    customize_excel_table(
+        file_name=file_name,
+        sheet_name=name,
+        start_row=gap_row_6th + 1,  # Adjust the row number after the fifth DataFrame
+        title="Apport nouveau",
+        last_row_color="FFA500"  # Light yellow for the last row
+    )
+
+    evolution = ventes_tb()
+
+    gap_row_7th = gap_row_6th + apport_gaz.shape[0] + 5  # Adds a 4-row gap between the fourth and fifth table
+
+    # Save the fifth DataFrame to the same Excel sheet, with a gap between tables row-wise
+    with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+        evolution.to_excel(writer, sheet_name=name, startrow=gap_row_7th, startcol=0)
+
+    # Customize the fifth DataFrame in the Excel file
+    customize_excel_table(
+        file_name=file_name,
+        sheet_name=name,
+        start_row=gap_row_7th + 1,  # Adjust the row number after the fifth DataFrame
+        title="III-  Ventes électricité (GWh)",
+        last_row_color="00FFFF"  # Light yellow for the last row
+    )
+
+    evolution2 = achats_tb()
+    gap_row_8th = gap_row_7th + evolution.shape[0] + 5  # Adds a 4-row gap between the fourth and fifth table
+
+    # Save the fifth DataFrame to the same Excel sheet, with a gap between tables row-wise
+    with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+        evolution2.to_excel(writer, sheet_name=name, startrow=gap_row_8th, startcol=0)
+
+    # Customize the fifth DataFrame in the Excel file
+    customize_excel_table(
+        file_name=file_name,
+        sheet_name=name,
+        start_row=gap_row_8th + 1,  # Adjust the row number after the fifth DataFrame
+        title="IV-  Achats électricité & pertes d'énergie (GWh/%)",
+        last_row_color="D3D3D3"  # Light yellow for the last row
+    )
+    chiffre_aff = chiffre_aff_tb()
+    gap_row_9th = gap_row_8th + evolution2.shape[0] + 5  # Adds a 4-row gap between the fourth and fifth table
+
+    # Save the fifth DataFrame to the same Excel sheet, with a gap between tables row-wise
+    with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+        chiffre_aff.to_excel(writer, sheet_name=name, startrow=gap_row_9th, startcol=0)
+
+    # Customize the fifth DataFrame in the Excel file
+    customize_excel_table(
+        file_name=file_name,
+        sheet_name=name,
+        start_row=gap_row_9th + 1,  # Adjust the row number after the fifth DataFrame
+        title="V-  Chiffre d'affaires électricité (MDA)",
+        last_row_color="D3D3D3"  # Light yellow for the last row
+    )
+
+    prix = prix_tb()
+    gap_row_10th = gap_row_9th + chiffre_aff.shape[0] + 5  # Adds a 4-row gap between the fourth and fifth table
+
+    # Save the fifth DataFrame to the same Excel sheet, with a gap between tables row-wise
+    with pd.ExcelWriter(file_name, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+        prix.to_excel(writer, sheet_name=name, startrow=gap_row_10th, startcol=0)
+
+    # Customize the fifth DataFrame in the Excel file
+    customize_excel_table(
+        file_name=file_name,
+        sheet_name=name,
+        start_row=gap_row_10th + 1,  # Adjust the row number after the fifth DataFrame
+        title="VI- Prix de Ventes Moyen électricité (cDA)",
         last_row_color="D3D3D3"  # Light yellow for the last row
     )

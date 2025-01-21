@@ -10,8 +10,8 @@ from data import *
 from creances.creance import load_process_creances, recette_df
 from RCN.rdc_dataframes import *
 from RCN.rdc_TB import branchements_simples_elecrticite,branchements_simples_gaz,extension_portfeuille_elec,extension_portfeuille_gaz,extension_affaires_elec,branchment_affaires_elec,extension_affaires_gaz, branchment_affaires_gaz
-from TB_creation import TB_clientele, TB_ventes, TB_ventes_gaz, TB_RCN_elec, TB_RCN_gaz, TB_solde
-
+from TB_creation import TB_clientele, TB_ventes, TB_ventes_gaz, TB_RCN_elec, TB_RCN_gaz, TB_solde, TB_elec
+from elec.elec_tb import nombre_abo_tb, accroissement_tb, apport_tb, apport_nv_tb, ventes_tb, achats_tb, resiliation_tb, reabonne_tb, chiffre_aff_tb,prix_tb
 pd.set_option('display.float_format', '{:.2f}'.format)
 
 
@@ -118,7 +118,7 @@ def load_process_xl(file='Clientele DD TO 08-2024.xlsx'):
 
     apport_nouv = apport - reabonne
 
-    return nombre_abonne, accroissement, apport, apport_nouv
+    return nombre_abonne, accroissement, apport, apport_nouv,resiliation, reabonne
 
 
 
@@ -142,7 +142,7 @@ def load_process_ventes(file='DD Blida - TDB ventes final hor tb.xlsx'):
         
         # Return the list of detected titles after the loop finishes
         return titles
-    keywords=['vente', 'achats','chiffre']
+    keywords=['vente', 'achats','chiffre','II- 3- Chiffres d\'affaires HT','II- 4- Prix moyens']
     titles = detect_tables(df,keywords)
 
     start_row = titles[0]+1
@@ -192,8 +192,47 @@ def load_process_ventes(file='DD Blida - TDB ventes final hor tb.xlsx'):
     tp3 = (tachats - tventes).div(tachats.where(tachats != 0))
     tp = pd.concat([tp1, tp2, tp3], axis=1)
     tp.columns = ['électricité','gaz','gaz Exprimé en M3']
+
+
+
+    start_index = titles[3]+1
+    end_index = titles[3]+15
+    chiffre_aff = df.loc[start_index:end_index]
+    chiffre_aff = chiffre_aff.dropna(axis=1, how='all')
+    chiffre_aff = chiffre_aff.iloc[1:]
+    chiffre_aff.columns = chiffre_aff.iloc[0]
+    chiffre_aff = chiffre_aff.iloc[1:]
+    chiffre_aff.columns.values[0] = 'placeholder'
+    chiffre_aff.index = chiffre_aff['placeholder']
+    del chiffre_aff['placeholder']
+    chiffre_aff.index.name = None
+    chiffre_aff.columns.name = None
+    chiffre_aff.columns = pd.MultiIndex.from_arrays([
+    ['électricité'] * 5 + ['gaz'] * 5,  # Higher level (First_5, Last_5)
+    chiffre_aff.columns  # Lower level (A, B, C, D, etc.)
+    ])
     
-    return ventes,achatsdf,tp
+
+
+
+
+    start_index = titles[4]+1
+    end_index = titles[4]+15
+    prix = df.loc[start_index:end_index]
+    prix = prix.dropna(axis=1, how='all')
+    prix = prix.iloc[1:]
+    prix.columns = prix.iloc[0]
+    prix = prix.iloc[1:]
+    prix.columns.values[0] = 'placeholder'
+    prix.index = prix['placeholder']
+    del prix['placeholder']
+    prix.index.name = None
+    prix.columns.name = None
+    prix.columns = pd.MultiIndex.from_arrays([
+    ['électricité'] * 5 + ['gaz'] * 5,  # Higher level (First_5, Last_5)
+    prix.columns  # Lower level (A, B, C, D, etc.)
+    ])
+    return ventes,achatsdf,tp, chiffre_aff,prix
 
 def get_wilaya(wilaya_code):
     mapping = {
@@ -299,19 +338,17 @@ def upload_file_ventes(wilaya_code):
         file = request.files['file']
       
         # Process the file
-        ventes, achats, tp = load_process_ventes(file)
+        ventes, achats, tp, chiffre_aff,prix = load_process_ventes(file)
      
         wilaya = get_wilaya(wilaya_code)
-       
-       
-       
         if wilaya in wilayas:
             
             wilayas_ventes[wilaya].append({
             "ventes": ventes,
             "achaats": achats,
             "tp": tp,
-           
+            'chiffre_aff': chiffre_aff,
+            'prix': prix,
         })
             
 
@@ -319,8 +356,7 @@ def upload_file_ventes(wilaya_code):
             # For other types like `tp`, append where 
             # appropriate in the wilayas dictionary
             # print(wilayas[wilaya][0]['nombre_abonne'])
-            wilayaname = wilaya + '-ventes'
-            # print(wilayas_ventes[wilayaname][0]['ventes'])
+            print(wilayas_ventes[wilaya][0]['chiffre_aff'])
         else:
         
             return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404, print(f'{wilaya} not found')
@@ -343,7 +379,7 @@ def upload_file(wilaya_code):
         file = request.files['file']
 
         # Process the file
-        nombre_abonne, accroissement, apport,apport_nouv = load_process_xl(file)
+        nombre_abonne, accroissement, apport,apport_nouv,resiliation,reabonne = load_process_xl(file)
         wilaya = get_wilaya(wilaya_code)
 
         if wilaya in wilayas:
@@ -352,9 +388,11 @@ def upload_file(wilaya_code):
             "nombre_abonne": nombre_abonne,
             "accroissement": accroissement,
             "apport": apport,
-            "apport_nouv": apport_nouv
+            "apport_nouv": apport_nouv,
+            "resiliation": resiliation,
+            "reabonne": reabonne,
         })
-        
+            print(wilayas[wilaya][0]['reabonne'])
             
         else:
             return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404
@@ -449,6 +487,7 @@ def get_tableau_de_bord():
         TB_RCN_elec()
         TB_RCN_gaz()
         TB_solde()
+        TB_elec()
         
         # Return success response immediately
         return jsonify({"status": "success", "message": "Tableau de bord generated successfully"})
@@ -542,6 +581,15 @@ def check_all_wilayas():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/nombre_abo_tb')
+def nombre_abo_tb_test():
+    result = prix_tb()
+    print(result)
+    return jsonify({'message':'done!'}),200
+
+
 
 
 if __name__ == '__main__':
