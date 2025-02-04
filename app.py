@@ -10,8 +10,13 @@ from data import *
 from creances.creance import load_process_creances, recette_df
 from RCN.rdc_dataframes import *
 from RCN.rdc_TB import branchements_simples_elecrticite,branchements_simples_gaz,extension_portfeuille_elec,extension_portfeuille_gaz,extension_affaires_elec,branchment_affaires_elec,extension_affaires_gaz, branchment_affaires_gaz
-from TB_creation import TB_clientele, TB_ventes, TB_ventes_gaz, TB_RCN_elec, TB_RCN_gaz, TB_solde, TB_elec
+from TB_creation import TB_clientele, TB_ventes, TB_ventes_gaz, TB_RCN_elec, TB_RCN_gaz, TB_solde, TB_elec,TB_gaz
 from elec.elec_tb import nombre_abo_tb, accroissement_tb, apport_tb, apport_nv_tb, ventes_tb, achats_tb, resiliation_tb, reabonne_tb, chiffre_aff_tb,prix_tb
+from gaz.gaz_tb import nombre_abo_tb_gaz, accroissement_tb_gaz, apport_tb_gaz,apport_nv_tb_gaz,resiliation_tb_gaz,reabonne_tb_gaz,ventes_tb_gaz,achats_tb_gaz,chiffre_aff_tb_gaz,prix_tb_gaz
+import pickle
+
+
+
 pd.set_option('display.float_format', '{:.2f}'.format)
 
 
@@ -392,7 +397,7 @@ def upload_file(wilaya_code):
             "resiliation": resiliation,
             "reabonne": reabonne,
         })
-            print(wilayas[wilaya][0]['reabonne'])
+            print(wilayas[wilaya][0]['accroissement'])
             
         else:
             return jsonify({'error': f'Wilaya code {wilaya} not found'}), 404
@@ -488,7 +493,7 @@ def get_tableau_de_bord():
         TB_RCN_gaz()
         TB_solde()
         TB_elec()
-        
+        TB_gaz()
         # Return success response immediately
         return jsonify({"status": "success", "message": "Tableau de bord generated successfully"})
     except Exception as e:
@@ -585,9 +590,41 @@ def check_all_wilayas():
 
 @app.route('/nombre_abo_tb')
 def nombre_abo_tb_test():
-    result = prix_tb()
+    result = reabonne_tb()
     print(result)
     return jsonify({'message':'done!'}),200
+
+
+# Load the model at app startup
+with open('ML/model_de_prevision.pkl', 'rb') as f:
+    model = pickle.load(f)
+
+with open('ML/full_pipeline.pkl', 'rb') as f:
+    full_pipeline = pickle.load(f)
+
+
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    # Get the JSON data from the request
+    json_data = request.get_json()
+
+    # Convert the JSON data to a Pandas DataFrame
+    df = pd.DataFrame([json_data])  # Wrap the JSON object in a list to create a single-row DataFrame
+
+    # Transform the DataFrame using your pipeline
+    df_prepared = full_pipeline.transform(df)
+
+    # Make predictions
+    prediction = model.predict(df_prepared)
+
+    # Print or log the prediction for debugging
+    print(prediction)
+
+    # Return the result as a JSON response
+    return jsonify({'message': 'done!', 'prediction': prediction[0]}), 200
+    # prediction = model.predict([data['features']])  
+
 
 
 

@@ -105,3 +105,60 @@ def last_month_with_data_RNC(df):
             desired = month
             break
     return desired
+
+
+def remove_null_rows_below_threshold(df):
+    """
+    Removes rows below the first completely null row in the DataFrame.
+    Assumes non-numerical index.
+
+    Parameters:
+        df (pd.DataFrame): Input DataFrame.
+
+    Returns:
+        pd.DataFrame: Filtered DataFrame with non-null rows.
+    """
+    # Identify rows where all values are NaN
+    null_rows = df.isnull().all(axis=1)
+
+    # Find the first index where all values are NaN
+    first_null_row_index = null_rows.idxmax() if null_rows.any() else None
+
+    if first_null_row_index is not None:
+        # Get the position of the first null row
+        first_null_row_position = df.index.get_loc(first_null_row_index)
+
+        # Keep rows up to but not including the first null row
+        return df.iloc[:first_null_row_position]
+    else:
+        # If no completely null row, return the original DataFrame
+        return df
+    
+
+
+def remove_zero_rows_below_threshold(df):
+    """
+    Removes rows below the first row where all values are zero in the DataFrame.
+    Assumes non-numerical index.
+
+    Parameters:
+        df (pd.DataFrame): Input DataFrame.
+
+    Returns:
+        pd.DataFrame: Filtered DataFrame with rows before the all-zero row.
+    """
+    # Identify rows where all values are 0
+    zero_rows = (df == 0).all(axis=1)
+
+    # Find the first index where all values are 0
+    first_zero_row_index = zero_rows.idxmax() if zero_rows.any() else None
+
+    if first_zero_row_index is not None:
+        # Get the position of the first zero row
+        first_zero_row_position = df.index.get_loc(first_zero_row_index)
+
+        # Keep rows up to but not including the first zero row
+        return df.iloc[:first_zero_row_position]
+    else:
+        # If no completely zero row, return the original DataFrame
+        return df
